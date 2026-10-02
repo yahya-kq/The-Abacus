@@ -11,16 +11,12 @@ import {
   RotateCcw,
   ShieldCheck,
   Search,
-  Filter,
   CheckCircle2,
   Calendar,
-  ChevronRight,
   Eye,
   ArrowUpRight,
-  Layers,
-  Sparkles,
 } from 'lucide-react';
-import { CycleCalculationResult, EmployeeCycleSummary, RestaurantConfig } from '../types/tips';
+import { CycleCalculationResult, EmployeeCycleSummary } from '../types/tips';
 import { generateTipCyclePDF } from '../lib/pdfGenerator';
 import { EmployeeDetailModal } from './EmployeeDetailModal';
 import { PoolGovernanceModal } from './PoolGovernanceModal';
@@ -45,10 +41,10 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
   useEffect(() => {
     try {
       confetti({
-        particleCount: 65,
-        spread: 70,
+        particleCount: 50,
+        spread: 60,
         origin: { y: 0.6 },
-        colors: ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b'],
+        colors: ['#4f46e5', '#3b82f6', '#06b6d4', '#f59e0b'],
       });
     } catch (e) {
       // Ignore if SSR
@@ -97,13 +93,13 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
             <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>
               {result.restaurant.name} Tip Dashboard
             </h1>
-            <span className="badge badge-emerald">
+            <span className="badge badge-indigo">
               <CheckCircle2 size={12} style={{ marginRight: '4px' }} />
               Reconciled • Differ $0.00
             </span>
           </div>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Cycle: <strong>{formatDisplayDate(result.startDate)}</strong> — <strong>{formatDisplayDate(result.endDate)}</strong> ({result.dailyCalculations.length} Operating Days)
+            Period: <strong>{formatDisplayDate(result.startDate)}</strong> — <strong>{formatDisplayDate(result.endDate)}</strong> ({result.dailyCalculations.length} Operating Days)
           </div>
         </div>
 
@@ -153,15 +149,15 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Total Tips Distributed
             </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(99, 102, 241, 0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#818cf8' }}>
               <DollarSign size={18} />
             </div>
           </div>
-          <div style={{ fontSize: '1.9rem', fontWeight: 800, color: '#34d399', letterSpacing: '-0.02em' }}>
+          <div style={{ fontSize: '1.9rem', fontWeight: 800, color: '#818cf8', letterSpacing: '-0.02em' }}>
             ${result.totalTips.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            WebDash, Kiosk & Manual pools combined
+            WebDash, DoorDash, Kiosk & Other tips combined
           </div>
         </div>
 
@@ -170,7 +166,7 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Total Hours Worked
             </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa' }}>
               <Clock size={18} />
             </div>
           </div>
@@ -178,7 +174,7 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
             {result.totalHours.toFixed(2)} hrs
           </div>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Time card total hours (unsplit regular/OT)
+            Time card total hours across all shifts
           </div>
         </div>
 
@@ -187,15 +183,15 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Cycle Tip Rate ($/Hr)
             </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(139, 92, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c084fc' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(6, 182, 212, 0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22d3ee' }}>
               <TrendingUp size={18} />
             </div>
           </div>
-          <div style={{ fontSize: '1.9rem', fontWeight: 800, color: '#c084fc', letterSpacing: '-0.02em' }}>
+          <div style={{ fontSize: '1.9rem', fontWeight: 800, color: '#22d3ee', letterSpacing: '-0.02em' }}>
             ${result.averagePerHourValue.toFixed(2)} / hr
           </div>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Effective average payout per hour
+            Effective payout per eligible hour worked
           </div>
         </div>
 
@@ -204,7 +200,7 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Recipient Staff Paid
             </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbbf24' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbbf24' }}>
               <Users size={18} />
             </div>
           </div>
@@ -222,9 +218,9 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
         <button
           onClick={() => setActiveTab('cycle')}
           style={{
-            background: activeTab === 'cycle' ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
-            color: activeTab === 'cycle' ? '#34d399' : 'var(--text-secondary)',
-            border: activeTab === 'cycle' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid transparent',
+            background: activeTab === 'cycle' ? 'rgba(99, 102, 241, 0.18)' : 'transparent',
+            color: activeTab === 'cycle' ? '#818cf8' : 'var(--text-secondary)',
+            border: activeTab === 'cycle' ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid transparent',
             borderRadius: 'var(--radius-pill)',
             padding: '8px 18px',
             fontSize: '0.88rem',
@@ -243,7 +239,7 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
         <button
           onClick={() => setActiveTab('dates')}
           style={{
-            background: activeTab === 'dates' ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+            background: activeTab === 'dates' ? 'rgba(59, 130, 246, 0.18)' : 'transparent',
             color: activeTab === 'dates' ? '#60a5fa' : 'var(--text-secondary)',
             border: activeTab === 'dates' ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent',
             borderRadius: 'var(--radius-pill)',
@@ -264,7 +260,7 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
         <button
           onClick={() => setActiveTab('governance')}
           style={{
-            background: activeTab === 'governance' ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
+            background: activeTab === 'governance' ? 'rgba(139, 92, 246, 0.18)' : 'transparent',
             color: activeTab === 'governance' ? '#c084fc' : 'var(--text-secondary)',
             border: activeTab === 'governance' ? '1px solid rgba(139, 92, 246, 0.4)' : '1px solid transparent',
             borderRadius: 'var(--radius-pill)',
@@ -367,7 +363,7 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
                         </button>
                       </td>
                       <td>
-                        <span className={`badge ${emp.role.toLowerCase() === 'server' ? 'badge-blue' : 'badge-emerald'}`}>
+                        <span className={`badge ${emp.role.toLowerCase() === 'server' ? 'badge-blue' : 'badge-indigo'}`}>
                           {emp.role}
                         </span>
                       </td>
@@ -381,7 +377,7 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
                       <td style={{ textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                         {poolShare}%
                       </td>
-                      <td style={{ textAlign: 'right', fontWeight: 800, fontSize: '1.05rem', color: '#34d399' }}>
+                      <td style={{ textAlign: 'right', fontWeight: 800, fontSize: '1.05rem', color: '#818cf8' }}>
                         ${emp.totalTips.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td style={{ textAlign: 'center' }}>
@@ -399,25 +395,25 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
                 })}
               </tbody>
               <tfoot>
-                <tr style={{ background: 'rgba(15, 23, 42, 0.95)', borderTop: '2px solid rgba(16, 185, 129, 0.3)' }}>
+                <tr style={{ background: 'rgba(15, 23, 42, 0.95)', borderTop: '2px solid rgba(99, 102, 241, 0.3)' }}>
                   <td style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '1rem' }}>
                     TOTALS ({result.totalEligibleEmployees} EMPLOYEES)
                   </td>
                   <td>
-                    <span className="badge badge-emerald">Equal Pool</span>
+                    <span className="badge badge-indigo">Equal Pool</span>
                   </td>
                   <td style={{ textAlign: 'center', fontWeight: 800 }}>{result.totalShiftsWorked}</td>
                   <td style={{ textAlign: 'right', fontWeight: 800, color: '#60a5fa', fontSize: '1.05rem' }}>
                     {result.totalHours.toFixed(2)} hrs
                   </td>
-                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#c084fc' }}>
+                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#22d3ee' }}>
                     ${result.averagePerHourValue.toFixed(2)} / hr
                   </td>
                   <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text-muted)' }}>100.0%</td>
-                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#34d399', fontSize: '1.2rem' }}>
+                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#818cf8', fontSize: '1.2rem' }}>
                     ${result.totalTips.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
-                  <td style={{ textAlign: 'center', color: '#34d399', fontWeight: 700, fontSize: '0.75rem' }}>
+                  <td style={{ textAlign: 'center', color: '#818cf8', fontWeight: 700, fontSize: '0.75rem' }}>
                     Verified
                   </td>
                 </tr>
@@ -441,8 +437,8 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
                     key={d.date}
                     onClick={() => setSelectedDate(d.date)}
                     style={{
-                      background: isSelected ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255, 255, 255, 0.02)',
-                      border: isSelected ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid var(--border-subtle)',
+                      background: isSelected ? 'rgba(99, 102, 241, 0.18)' : 'rgba(255, 255, 255, 0.02)',
+                      border: isSelected ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid var(--border-subtle)',
                       borderRadius: 'var(--radius-sm)',
                       padding: '12px 14px',
                       display: 'flex',
@@ -454,7 +450,7 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: isSelected ? '#60a5fa' : 'var(--text-primary)' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: isSelected ? '#818cf8' : 'var(--text-primary)' }}>
                         {d.displayDate}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -462,7 +458,7 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#34d399' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#818cf8' }}>
                         ${d.totalTips.toFixed(2)}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: '#60a5fa' }}>
@@ -491,17 +487,24 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
                   </div>
                 </div>
 
-                <div className="badge badge-emerald" style={{ fontSize: '0.85rem', padding: '6px 14px' }}>
+                <div className="badge badge-indigo" style={{ fontSize: '0.85rem', padding: '6px 14px' }}>
                   Daily Pool: ${currentDateCalc.totalTips.toFixed(2)}
                 </div>
               </div>
 
               {/* Day Metrics */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginBottom: '20px' }}>
                 <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>WEBDASH TIPS</div>
                   <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#f8fafc', marginTop: '3px' }}>
                     ${currentDateCalc.tipSources.webDash.toFixed(2)}
+                  </div>
+                </div>
+
+                <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>DOORDASH</div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#f8fafc', marginTop: '3px' }}>
+                    ${currentDateCalc.tipSources.doorDash.toFixed(2)}
                   </div>
                 </div>
 
@@ -521,7 +524,7 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
 
                 <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>HOURLY RATE</div>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#34d399', marginTop: '3px' }}>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#818cf8', marginTop: '3px' }}>
                     ${currentDateCalc.perHourValue.toFixed(2)} / hr
                   </div>
                 </div>
@@ -549,7 +552,7 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
                       <tr key={e.employeeName}>
                         <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{e.employeeName}</td>
                         <td>
-                          <span className={`badge ${e.role.toLowerCase() === 'server' ? 'badge-blue' : 'badge-emerald'}`}>
+                          <span className={`badge ${e.role.toLowerCase() === 'server' ? 'badge-blue' : 'badge-indigo'}`}>
                             {e.role}
                           </span>
                         </td>
@@ -560,7 +563,7 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
                         <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>
                           {e.percentageOfDailyPool.toFixed(1)}%
                         </td>
-                        <td style={{ textAlign: 'right', fontWeight: 800, color: '#34d399' }}>
+                        <td style={{ textAlign: 'right', fontWeight: 800, color: '#818cf8' }}>
                           ${e.tipsEarned.toFixed(2)}
                         </td>
                       </tr>
@@ -573,7 +576,7 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
                       <td style={{ textAlign: 'right', fontWeight: 800, color: '#60a5fa' }}>{currentDateCalc.totalHours.toFixed(2)} hrs</td>
                       <td style={{ textAlign: 'right', fontWeight: 800 }}>${currentDateCalc.perHourValue.toFixed(2)}/hr</td>
                       <td style={{ textAlign: 'right', fontWeight: 800 }}>100.0%</td>
-                      <td style={{ textAlign: 'right', fontWeight: 800, color: '#34d399' }}>${currentDateCalc.totalTips.toFixed(2)}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 800, color: '#818cf8' }}>${currentDateCalc.totalTips.toFixed(2)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -589,14 +592,14 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
             <div>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                System Audit & Toast POS Pool Reconciliation
+                System Audit & Reconciliation
               </h2>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                 Comparing cycle inputs, hours integrity, and mathematical balance
               </p>
             </div>
-            <div className="badge badge-emerald" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-              Reconciliation Difference: ${result.reconciliation.difference.toFixed(2)}
+            <div className="badge badge-indigo" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
+              Difference: ${result.reconciliation.difference.toFixed(2)}
             </div>
           </div>
 
@@ -610,15 +613,15 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
                 ${result.reconciliation.totalInputTips.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                Sum of all WebDash, Kiosk & manual daily entries across {result.dailyCalculations.length} days
+                Sum of WebDash, DoorDash, Kiosk & Other daily entries across {result.dailyCalculations.length} days
               </div>
             </div>
 
             <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#34d399', marginBottom: '6px' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#818cf8', marginBottom: '6px' }}>
                 TOTAL EMPLOYEE PAYOUTS
               </div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#34d399' }}>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#818cf8' }}>
                 ${result.reconciliation.totalDistributedTips.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
@@ -630,11 +633,11 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
               <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fbbf24', marginBottom: '6px' }}>
                 DIFFERENCE AUDIT
               </div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#34d399' }}>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#818cf8' }}>
                 $0.00
               </div>
-              <div style={{ fontSize: '0.78rem', color: '#34d399', marginTop: '4px', fontWeight: 600 }}>
-                ✓ Perfectly Balanced to the cent
+              <div style={{ fontSize: '0.78rem', color: '#818cf8', marginTop: '4px', fontWeight: 600 }}>
+                ✓ Perfectly Balanced
               </div>
             </div>
           </div>
@@ -651,10 +654,10 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
               }}
             >
               <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fbbf24', marginBottom: '6px' }}>
-                Excluded Roles Policy Audit ({result.excludedShiftsCount} shifts filtered out)
+                Excluded Roles Policy ({result.excludedShiftsCount} shifts filtered out)
               </h4>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                Per Toast POS tip pool configuration, only roles designated as <strong>Recipients (Cashier, Server)</strong> are included in tip payouts. Roles such as <strong>{result.excludedRoles.join(', ')}</strong> were detected in the time card and correctly excluded from recipient calculations.
+                Only roles designated as <strong>Recipients (Cashier, Server)</strong> are included in tip payouts. Roles such as <strong>{result.excludedRoles.join(', ')}</strong> were excluded from recipient calculations.
               </p>
             </div>
           )}
@@ -666,7 +669,7 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
               style={{ padding: '8px 18px', fontSize: '0.85rem' }}
             >
               <ShieldCheck size={16} />
-              <span>View Toast POS Pool Configuration Diagram</span>
+              <span>View Pool Configuration Details</span>
             </button>
           </div>
         </div>
@@ -729,7 +732,7 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
               Reset Abacus Session?
             </h3>
             <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '24px' }}>
-              This will clear the current calculation session, uploaded time card data, and daily tip inputs. Any downloaded PDF report will remain saved on your computer.
+              This will clear the current calculation session, uploaded time card data, and daily tip inputs.
             </p>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
               <button

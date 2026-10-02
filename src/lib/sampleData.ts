@@ -58,15 +58,15 @@ Lauren Sanders,Cashier,17,09-Sep,1:00 AM,5:00 AM,4,0,0,,0,0,4,25,2.52,0
 ,Cashier,17,16-Sep,6:31 AM,11:26 AM,4.92,0,0,,0.28,0,4.92,319.75,49.64,0
 ,Cashier,17,17-Sep,6:30 AM,11:35 AM,5.1,0,0,,0,0,5.1,237.08,25.13,0
 ,Cashier,17,19-Sep,5:31 AM,11:36 AM,5.57,0,0,,0,0.52,5.57,737,81.2,0
-Total,,,,,,44.86,0,0,0,1.17,0.52,44.86,2740.18,341.58,0
+Total,,,,,,44.86,0,0,0,0.99,0.52,44.86,2740.18,341.58,0
 ,,,,,,,,,,,,,,
-Michelle Osnovikov ,Cashier,17,08-Sep,5:05 AM,11:30 AM,5.89,0,0,,0,0.53,5.89,386.05,30.56,0
-,Cashier,17,09-Sep,4:48 AM,11:17 AM,6.49,0,0,,0,0,6.49,432.6,24.16,0
-,Cashier,17,10-Sep,4:47 AM,11:27 AM,6.17,0,0,,0,0.51,6.17,659.5,48.21,0
-,Cashier,17,17-Sep,4:01 AM,11:35 AM,6.47,0,0,,0.19,1.1,6.47,204.75,8.45,0
-,Cashier,17,18-Sep,5:01 AM,11:30 AM,5.95,0,0,,0.17,0.53,5.95,413.2,39.53,0
-,Cashier,17,20-Sep,3:58 AM,11:18 AM,6.25,0,0,,0,1.09,6.25,903.28,90.79,0
-Total,,,,,,37.22,0,0,0,0.36,3.76,37.22,2999.38,241.7,0
+Michelle Osnovikov,Server,17,08-Sep,4:32 AM,11:31 AM,5.89,0,0,,0,1.09,5.89,173.5,12.28,0
+,Server,17,10-Sep,4:31 AM,11:27 AM,5.94,0,0,,0,1,5.94,374.5,41.97,0
+,Server,17,12-Sep,10:57 PM,5:01 AM,6.07,0,0,,0,0,6.07,358.95,43.25,0
+,Server,17,14-Sep,10:57 PM,5:02 AM,6.08,0,0,,0,0,6.08,348.65,16.42,0
+,Server,17,15-Sep,11:00 PM,5:00 AM,6,0,0,,0,0,6,279.7,28.87,0
+,Server,17,17-Sep,4:31 AM,11:35 AM,7.24,0,0,,0.18,0,7.24,204.65,11.54,0
+Total,,,,,,37.22,0,0,0,0.18,2.09,37.22,1739.95,154.33,0
 ,,,,,,,,,,,,,,`;
 
 export const MISSION_HILL_SAMPLE_TIPS: Record<string, DailyTipInput> = {
@@ -77,7 +77,6 @@ export const MISSION_HILL_SAMPLE_TIPS: Record<string, DailyTipInput> = {
     webDashTips: 172.38,
     doorDashTips: 0,
     kioskTips: 0,
-    chaosTips: 0,
     otherTips: 0,
     totalTips: 172.38,
   },
@@ -88,7 +87,6 @@ export const MISSION_HILL_SAMPLE_TIPS: Record<string, DailyTipInput> = {
     webDashTips: 64.53,
     doorDashTips: 0,
     kioskTips: 0,
-    chaosTips: 0,
     otherTips: 0,
     totalTips: 64.53,
   },
@@ -99,7 +97,6 @@ export const MISSION_HILL_SAMPLE_TIPS: Record<string, DailyTipInput> = {
     webDashTips: 104.72,
     doorDashTips: 0,
     kioskTips: 0,
-    chaosTips: 0,
     otherTips: 0,
     totalTips: 104.72,
   },
@@ -110,7 +107,6 @@ export const MISSION_HILL_SAMPLE_TIPS: Record<string, DailyTipInput> = {
     webDashTips: 98.67,
     doorDashTips: 0,
     kioskTips: 0,
-    chaosTips: 0,
     otherTips: 0,
     totalTips: 98.67,
   },
@@ -121,7 +117,6 @@ export const MISSION_HILL_SAMPLE_TIPS: Record<string, DailyTipInput> = {
     webDashTips: 173.17,
     doorDashTips: 0,
     kioskTips: 6.21,
-    chaosTips: 0,
     otherTips: 0,
     totalTips: 179.38,
   },
@@ -132,7 +127,6 @@ export const MISSION_HILL_SAMPLE_TIPS: Record<string, DailyTipInput> = {
     webDashTips: 311.3,
     doorDashTips: 0,
     kioskTips: 5.68,
-    chaosTips: 0,
     otherTips: 0,
     totalTips: 316.98,
   },
@@ -143,7 +137,6 @@ export const MISSION_HILL_SAMPLE_TIPS: Record<string, DailyTipInput> = {
     webDashTips: 258.47,
     doorDashTips: 0,
     kioskTips: 2.75,
-    chaosTips: 0,
     otherTips: 0,
     totalTips: 261.22,
   },
@@ -154,7 +147,6 @@ export const MISSION_HILL_SAMPLE_TIPS: Record<string, DailyTipInput> = {
     webDashTips: 90.33,
     doorDashTips: 0,
     kioskTips: 2.8,
-    chaosTips: 0,
     otherTips: 0,
     totalTips: 93.13,
   },
@@ -165,7 +157,6 @@ export const MISSION_HILL_SAMPLE_TIPS: Record<string, DailyTipInput> = {
     webDashTips: 100.69,
     doorDashTips: 0,
     kioskTips: 0,
-    chaosTips: 0,
     otherTips: 0,
     totalTips: 100.69,
   },
@@ -176,7 +167,6 @@ export const MISSION_HILL_SAMPLE_TIPS: Record<string, DailyTipInput> = {
     webDashTips: 52.9,
     doorDashTips: 0,
     kioskTips: 0,
-    chaosTips: 0,
     otherTips: 0,
     totalTips: 52.9,
   },
@@ -187,7 +177,6 @@ export const MISSION_HILL_SAMPLE_TIPS: Record<string, DailyTipInput> = {
     webDashTips: 87.17,
     doorDashTips: 0,
     kioskTips: 0,
-    chaosTips: 0,
     otherTips: 0,
     totalTips: 87.17,
   },
@@ -198,7 +187,6 @@ export const MISSION_HILL_SAMPLE_TIPS: Record<string, DailyTipInput> = {
     webDashTips: 160.07,
     doorDashTips: 0,
     kioskTips: 1.17,
-    chaosTips: 0,
     otherTips: 0,
     totalTips: 161.24,
   },
@@ -209,7 +197,6 @@ export const MISSION_HILL_SAMPLE_TIPS: Record<string, DailyTipInput> = {
     webDashTips: 246.83,
     doorDashTips: 0,
     kioskTips: 11.44,
-    chaosTips: 0,
     otherTips: 0,
     totalTips: 258.27,
   },
@@ -220,7 +207,6 @@ export const MISSION_HILL_SAMPLE_TIPS: Record<string, DailyTipInput> = {
     webDashTips: 167.59,
     doorDashTips: 0,
     kioskTips: 0,
-    chaosTips: 0,
     otherTips: 0,
     totalTips: 167.59,
   },

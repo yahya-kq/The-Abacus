@@ -16,8 +16,8 @@ export function LandingHero({ onStart }: LandingHeroProps) {
     const x = (e.clientX - rect.left) / rect.width - 0.5;
     const y = (e.clientY - rect.top) / rect.height - 0.5;
     setTilt({
-      x: -y * 12, // tilt X based on vertical mouse
-      y: x * 14,  // tilt Y based on horizontal mouse
+      x: -y * 12,
+      y: x * 14,
     });
   };
 
@@ -39,10 +39,10 @@ export function LandingHero({ onStart }: LandingHeroProps) {
         padding: '24px 20px',
       }}
     >
-      {/* Interactive 3D Abacus Background */}
+      {/* 3D Calculation & Restaurant Matrix Canvas */}
       <Interactive3DAbacus />
 
-      {/* Central 3D Focus Card with Reactive Mouse Tilt */}
+      {/* Modern Center 3D Focus Card */}
       <div
         style={{
           position: 'relative',
@@ -51,35 +51,35 @@ export function LandingHero({ onStart }: LandingHeroProps) {
           maxWidth: '520px',
           width: '100%',
           padding: '48px 36px',
-          background: 'rgba(30, 41, 59, 0.72)',
+          background: 'rgba(30, 41, 59, 0.75)',
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
           borderRadius: '24px',
-          border: '1px solid rgba(255, 255, 255, 0.14)',
-          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(16, 185, 129, 0.12)',
+          border: '1px solid rgba(255, 255, 255, 0.16)',
+          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.45), 0 0 40px rgba(79, 70, 229, 0.15)',
           transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
           transition: 'transform 0.15s ease-out, box-shadow 0.25s ease',
         }}
       >
-        {/* Sleek Abacus Emblem */}
+        {/* Precision Sapphire Emblem */}
         <div
           style={{
             width: '68px',
             height: '68px',
             borderRadius: '18px',
-            background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+            background: 'linear-gradient(135deg, #4f46e5 0%, #2563eb 100%)',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: '#ffffff',
-            boxShadow: '0 10px 25px rgba(16, 185, 129, 0.35)',
+            boxShadow: '0 10px 25px rgba(79, 70, 229, 0.4)',
             marginBottom: '22px',
           }}
         >
           <Calculator size={34} />
         </div>
 
-        {/* Brand Name & Purpose */}
+        {/* Title & Subtitle */}
         <h1
           style={{
             fontSize: '2.9rem',
@@ -103,7 +103,7 @@ export function LandingHero({ onStart }: LandingHeroProps) {
           Restaurant Tip Calculator
         </p>
 
-        {/* Prominent Primary Action Button */}
+        {/* Prominent Action Button (Indigo/Sapphire Gradient, zero green) */}
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <button
             id="run-abacus-btn"
@@ -120,9 +120,9 @@ export function LandingHero({ onStart }: LandingHeroProps) {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '12px',
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              background: 'linear-gradient(135deg, #4f46e5 0%, #2563eb 100%)',
               border: '1px solid rgba(255, 255, 255, 0.3)',
-              boxShadow: '0 8px 32px rgba(16, 185, 129, 0.45)',
+              boxShadow: '0 8px 32px rgba(79, 70, 229, 0.5)',
               position: 'relative',
               zIndex: 20,
               pointerEvents: 'auto',

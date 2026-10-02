@@ -32,7 +32,7 @@ export function generateDateRange(startDateStr: string, endDateStr: string): str
 }
 
 /**
- * The core Bacchus Tip Calculation Engine
+ * The core Abacus Tip Calculation Engine
  */
 export function calculateTipCycle(
   restaurant: RestaurantConfig,
@@ -65,7 +65,6 @@ export function calculateTipCycle(
       webDashTips: 0,
       doorDashTips: 0,
       kioskTips: 0,
-      chaosTips: 0,
       otherTips: 0,
       totalTips: 0,
     };
@@ -74,7 +73,6 @@ export function calculateTipCycle(
       (dayInput.webDashTips || 0) +
       (dayInput.doorDashTips || 0) +
       (dayInput.kioskTips || 0) +
-      (dayInput.chaosTips || 0) +
       (dayInput.otherTips || 0);
 
     // Shifts for this business day
@@ -122,10 +120,8 @@ export function calculateTipCycle(
           role: val.role,
           totalHours: 0,
           totalTips: 0,
-          shiftCount: 0,
           averagePerHourTip: 0,
-          isRecipient: true,
-          isContributor: true,
+          shiftCount: 0,
           dailyBreakdown: [],
         };
         employeeSummariesMap.set(empName, empSummary);
@@ -135,11 +131,12 @@ export function calculateTipCycle(
       empSummary.totalTips += tipsEarned;
       empSummary.shiftCount += 1;
       empSummary.dailyBreakdown.push({
-        date,
-        displayDate: formatDisplayDate(date),
+        employeeName: empName,
+        role: val.role,
         hours: val.hours,
         dailyRate: perHourValue,
         tipsEarned,
+        percentageOfDailyPool,
       });
     }
 
@@ -154,7 +151,6 @@ export function calculateTipCycle(
         webDash: dayInput.webDashTips || 0,
         doorDash: dayInput.doorDashTips || 0,
         kiosk: dayInput.kioskTips || 0,
-        chaos: dayInput.chaosTips || 0,
         other: dayInput.otherTips || 0,
       },
       totalTips: dayTotalTips,
@@ -186,7 +182,7 @@ export function calculateTipCycle(
   }
 
   const cycleDistributedTips = employeeSummaries.reduce((sum, e) => sum + e.totalTips, 0);
-  const diff = cycleTotalTips - cycleDistributedTips;
+  const diff = Math.round((cycleTotalTips - cycleDistributedTips) * 100) / 100;
 
   return {
     restaurant,
@@ -199,13 +195,12 @@ export function calculateTipCycle(
     totalShiftsWorked: eligibleShifts.length,
     dailyCalculations,
     employeeSummaries,
+    excludedShiftsCount: excludedShifts.length,
+    excludedRoles: Array.from(excludedRolesSet),
     reconciliation: {
       totalInputTips: cycleTotalTips,
       totalDistributedTips: cycleDistributedTips,
       difference: diff,
-      isBalanced: Math.abs(diff) < 0.02,
     },
-    excludedShiftsCount: excludedShifts.length,
-    excludedRoles: Array.from(excludedRolesSet),
   };
 }

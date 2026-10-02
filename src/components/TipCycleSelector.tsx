@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Calendar, ChevronRight, Clock } from 'lucide-react';
+import { Calendar, Clock } from 'lucide-react';
 import { formatDisplayDate } from '../lib/parser';
 
 interface TipCycleSelectorProps {
@@ -11,11 +11,6 @@ interface TipCycleSelectorProps {
 }
 
 export function TipCycleSelector({ startDate, endDate, onChange }: TipCycleSelectorProps) {
-  const presets = [
-    { label: 'Sep 07 – Sep 20, 2026 (Active Sample)', start: '2026-09-07', end: '2026-09-20' },
-    { label: 'Jul 13 – Jul 26, 2026 (July Cycle)', start: '2026-07-13', end: '2026-07-26' },
-  ];
-
   // Calculate days in cycle
   const getCycleDays = () => {
     if (!startDate || !endDate) return 0;
@@ -30,81 +25,51 @@ export function TipCycleSelector({ startDate, endDate, onChange }: TipCycleSelec
   const daysCount = getCycleDays();
 
   return (
-    <div className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+    <div className="glass-panel" style={{ padding: '22px 24px', height: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div
             style={{
-              width: '36px',
-              height: '36px',
+              width: '34px',
+              height: '34px',
               borderRadius: '8px',
-              background: 'rgba(59, 130, 246, 0.15)',
+              background: 'rgba(99, 102, 241, 0.16)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#60a5fa',
+              color: '#818cf8',
             }}
           >
             <Calendar size={18} />
           </div>
           <div>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>1. Tip Cycle Selection</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Select the start and end dates for this payroll tip calculation
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#f8fafc' }}>Tip Cycle Dates</h3>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              Auto-detected from time card or manually adjusted
             </p>
           </div>
         </div>
 
-        <div className="badge badge-blue">
+        <div className="badge badge-indigo">
           <Clock size={12} style={{ marginRight: '4px' }} />
-          {daysCount > 0 ? `${daysCount} Days in Cycle` : 'Select dates'}
+          {daysCount > 0 ? `${daysCount} Operating Days` : 'Select range'}
         </div>
       </div>
 
-      {/* Preset pills */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '18px', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', alignSelf: 'center', marginRight: '4px' }}>
-          Presets:
-        </span>
-        {presets.map((p) => {
-          const isSelected = startDate === p.start && endDate === p.end;
-          return (
-            <button
-              key={p.label}
-              onClick={() => onChange(p.start, p.end)}
-              type="button"
-              style={{
-                background: isSelected ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                border: isSelected ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid var(--border-subtle)',
-                color: isSelected ? '#34d399' : 'var(--text-secondary)',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                padding: '6px 12px',
-                borderRadius: 'var(--radius-pill)',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              {p.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Date Input Pickers */}
+      {/* Date Pickers Grid */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '16px',
-          background: 'rgba(15, 23, 42, 0.4)',
-          padding: '16px',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: '14px',
+          background: 'rgba(15, 23, 42, 0.45)',
+          padding: '14px',
           borderRadius: 'var(--radius-md)',
           border: '1px solid var(--border-subtle)',
         }}
       >
         <div>
-          <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+          <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '5px' }}>
             Start Date
           </label>
           <input
@@ -120,7 +85,7 @@ export function TipCycleSelector({ startDate, endDate, onChange }: TipCycleSelec
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+          <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '5px' }}>
             End Date
           </label>
           <input

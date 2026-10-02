@@ -71,13 +71,14 @@ export interface DailyTipInput {
   webDashTips: number;
   doorDashTips: number;
   kioskTips: number;
-  chaosTips: number;
   otherTips: number;
   customFields?: Record<string, number>;
   totalTips: number;
 }
 
 export interface EmployeeDailyDetail {
+  date: string;
+  displayDate: string;
   employeeName: string;
   role: string;
   hours: number;
@@ -94,7 +95,6 @@ export interface DailyCalculationResult {
     webDash: number;
     doorDash: number;
     kiosk: number;
-    chaos: number;
     other: number;
   };
   totalTips: number;
@@ -108,17 +108,9 @@ export interface EmployeeCycleSummary {
   role: string;
   totalHours: number;
   totalTips: number;
-  shiftCount: number;
   averagePerHourTip: number;
-  isRecipient: boolean;
-  isContributor: boolean;
-  dailyBreakdown: Array<{
-    date: string;
-    displayDate: string;
-    hours: number;
-    dailyRate: number;
-    tipsEarned: number;
-  }>;
+  shiftCount: number;
+  dailyBreakdown: EmployeeDailyDetail[];
 }
 
 export interface CycleCalculationResult {
@@ -132,12 +124,20 @@ export interface CycleCalculationResult {
   totalShiftsWorked: number;
   dailyCalculations: DailyCalculationResult[];
   employeeSummaries: EmployeeCycleSummary[];
+  excludedShiftsCount: number;
+  excludedRoles: string[];
   reconciliation: {
     totalInputTips: number;
     totalDistributedTips: number;
     difference: number;
-    isBalanced: boolean;
   };
-  excludedShiftsCount: number;
-  excludedRoles: string[];
+}
+
+export interface ParseTimecardResult {
+  shifts: ProcessedShift[];
+  rawRowCount: number;
+  errors: string[];
+  detectedStartDate?: string;
+  detectedEndDate?: string;
+  extractedDailyTips: Record<string, number>; // date (YYYY-MM-DD) -> sum of tips from file
 }

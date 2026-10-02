@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { DollarSign, Sparkles, Trash2, Calendar, ChevronDown, ChevronUp, Clock, Users } from 'lucide-react';
+import React from 'react';
+import { DollarSign, Sparkles, Trash2, Clock, Users, ArrowRight, RefreshCw, Calculator } from 'lucide-react';
 import { DailyTipInput, ProcessedShift, RestaurantConfig } from '../types/tips';
 import { MISSION_HILL_SAMPLE_TIPS } from '../lib/sampleData';
 import { formatDisplayDate, getDayOfWeek } from '../lib/parser';
@@ -13,6 +13,7 @@ interface DailyTipEntryProps {
   shifts: ProcessedShift[];
   onInputChange: (date: string, field: keyof DailyTipInput, value: number) => void;
   onBulkSet: (data: Record<string, DailyTipInput>) => void;
+  onCalculate?: () => void;
 }
 
 export function DailyTipEntry({
@@ -22,9 +23,8 @@ export function DailyTipEntry({
   shifts,
   onInputChange,
   onBulkSet,
+  onCalculate,
 }: DailyTipEntryProps) {
-  const [collapsedDates, setCollapsedDates] = useState<Record<string, boolean>>({});
-
   // Compute total tips entered across all dates
   let totalEnteredTips = 0;
   for (const date of cycleDates) {
@@ -34,31 +34,59 @@ export function DailyTipEntry({
         (d.webDashTips || 0) +
         (d.doorDashTips || 0) +
         (d.kioskTips || 0) +
-        (d.chaosTips || 0) +
         (d.otherTips || 0);
     }
   }
 
-  // Pre-fill with sample verified values
+  // Pre-fill with sample verified values from Mission Hill sheet
   const handlePreFillSample = () => {
     const updated = { ...dailyTipInputs };
     for (const date of cycleDates) {
       if (MISSION_HILL_SAMPLE_TIPS[date]) {
         updated[date] = { ...MISSION_HILL_SAMPLE_TIPS[date] };
-      } else {
-        updated[date] = {
-          date,
-          displayDate: formatDisplayDate(date),
-          dayOfWeek: getDayOfWeek(date),
-          webDashTips: 100.0,
-          doorDashTips: 0,
-          kioskTips: 0,
-          chaosTips: 0,
-          otherTips: 0,
-          totalTips: 100.0,
-        };
       }
     }
+    onBulkSet(updated);
+  };
+
+  // Sync WebDash tips directly from loaded shift records
+  const handleSyncFromShifts = () => {
+    const shiftTipsByDate: Record<string, number> = {};
+    for (const s of shifts) {
+      if (s.posTips > 0) {
+        shiftTipsByDate[s.businessDate] = (shiftTipsByDate[s.businessDate] || 0) + s.posTips;
+      }
+    }
+
+    const updated = { ...dailyTipInputs };
+    for (const date of cycleDates) {
+      const existing = updated[date] || {
+        date,
+        displayDate: formatDisplayDate(date),
+        dayOfWeek: getDayOfWeek(date),
+        webDashTips: 0,
+        doorDashTips: 0,
+        kioskTips: 0,
+        otherTips: 0,
+        totalTips: 0,
+      };
+
+      const extractedTip = shiftTipsByDate[date] !== undefined ? Math.round(shiftTipsByDate[date] * 100) / 100 : existing.webDashTips || 0;
+
+      const newDay = {
+        ...existing,
+        webDashTips: extractedTip,
+      };
+
+      newDay.totalTips =
+        (newDay.webDashTips || 0) +
+        (newDay.doorDashTips || 0) +
+        (newDay.kioskTips || 0) +
+        (newDay.otherTips || 0);
+
+      updated[date] = newDay;
+    }
+
     onBulkSet(updated);
   };
 
@@ -72,7 +100,6 @@ export function DailyTipEntry({
         webDashTips: 0,
         doorDashTips: 0,
         kioskTips: 0,
-        chaosTips: 0,
         otherTips: 0,
         totalTips: 0,
       };
@@ -88,45 +115,95 @@ export function DailyTipEntry({
     return { staffCount: emps.length, totalHours: hours };
   };
 
+  const totalCycleHours = shifts
+    .filter((s) => s.isEligibleRecipient && cycleDates.includes(s.businessDate))
+    .reduce((sum, s) => sum + s.totalHours, 0);
+
   return (
     <div className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+      {/* Action Header & Live Summary Bar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '20px',
+          flexWrap: 'wrap',
+          gap: '14px',
+          paddingBottom: '16px',
+          borderBottom: '1px solid var(--border-subtle)',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div
             style={{
               width: '36px',
               height: '36px',
               borderRadius: '8px',
-              background: 'rgba(245, 158, 11, 0.15)',
+              background: 'rgba(99, 102, 241, 0.16)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#fbbf24',
+              color: '#818cf8',
             }}
           >
-            <DollarSign size={18} />
+            <DollarSign size={20} />
           </div>
           <div>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>3. Manual Daily Tip Entry</h3>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc' }}>
+              Daily Tip Entries ({cycleDates.length} Days)
+            </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Enter WebDash, DoorDash, Kiosk, or other collected tips for each date in this cycle
+              WebDash tips auto-populate from time cards. Enter DoorDash, Kiosk, or Other tips if collected.
             </p>
           </div>
         </div>
 
-        {/* Running total pill */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div className="badge badge-emerald" style={{ fontSize: '0.85rem', padding: '6px 14px' }}>
-            <span>Total Entered:</span>
-            <strong style={{ marginLeft: '4px' }}>
+        {/* Live Total & Quick Calculate CTA */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+              Total Tips Entered
+            </div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#818cf8' }}>
               ${totalEnteredTips.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </strong>
+            </div>
           </div>
+
+          {onCalculate && (
+            <button
+              onClick={onCalculate}
+              type="button"
+              className="btn-primary"
+              style={{ padding: '10px 24px', fontSize: '0.92rem' }}
+            >
+              <Calculator size={17} />
+              <span>Calculate Tips</span>
+              <ArrowRight size={16} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Action helpers */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '18px', flexWrap: 'wrap' }}>
+      {/* Helper Action Toolbar */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        {shifts.length > 0 && (
+          <button
+            onClick={handleSyncFromShifts}
+            type="button"
+            className="btn-secondary"
+            style={{
+              fontSize: '0.8rem',
+              padding: '6px 14px',
+              color: '#818cf8',
+              borderColor: 'rgba(99, 102, 241, 0.35)',
+            }}
+          >
+            <RefreshCw size={13} />
+            <span>Sync WebDash Tips from Time Card</span>
+          </button>
+        )}
+
         <button
           onClick={handlePreFillSample}
           type="button"
@@ -134,12 +211,12 @@ export function DailyTipEntry({
           style={{
             fontSize: '0.8rem',
             padding: '6px 14px',
-            color: '#34d399',
-            borderColor: 'rgba(16, 185, 129, 0.3)',
+            color: '#60a5fa',
+            borderColor: 'rgba(59, 130, 246, 0.35)',
           }}
         >
-          <Sparkles size={14} />
-          <span>⚡ Auto-fill Mission Hill Excel Tips ($2,118.87)</span>
+          <Sparkles size={13} />
+          <span>Auto-fill Sample Sheet Tips ($2,118.87)</span>
         </button>
 
         <button
@@ -149,119 +226,60 @@ export function DailyTipEntry({
           style={{ fontSize: '0.8rem', padding: '6px 14px', color: '#fb7185' }}
         >
           <Trash2 size={13} />
-          <span>Clear All Dates</span>
+          <span>Clear All</span>
         </button>
       </div>
 
-      {/* Daily Rows Container */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '550px', overflowY: 'auto', paddingRight: '4px' }}>
-        {cycleDates.map((date) => {
-          const entry = dailyTipInputs[date] || {
-            date,
-            displayDate: formatDisplayDate(date),
-            dayOfWeek: getDayOfWeek(date),
-            webDashTips: 0,
-            doorDashTips: 0,
-            kioskTips: 0,
-            chaosTips: 0,
-            otherTips: 0,
-            totalTips: 0,
-          };
+      {/* Modern Compact Daily Input Table */}
+      <div style={{ overflowX: 'auto', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
+        <table className="modern-table">
+          <thead>
+            <tr>
+              <th style={{ width: '190px' }}>Date</th>
+              <th style={{ width: '130px' }}>Staff on Duty</th>
+              <th>WebDash Tips ($)</th>
+              <th>DoorDash Tips ($)</th>
+              <th>Kiosk Tips ($)</th>
+              <th>Other Tips ($)</th>
+              <th style={{ textAlign: 'right', width: '120px' }}>Day Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {cycleDates.map((date) => {
+              const entry = dailyTipInputs[date] || {
+                date,
+                displayDate: formatDisplayDate(date),
+                dayOfWeek: getDayOfWeek(date),
+                webDashTips: 0,
+                doorDashTips: 0,
+                kioskTips: 0,
+                otherTips: 0,
+                totalTips: 0,
+              };
 
-          const stats = getDateStaffStats(date);
-          const dayTotal =
-            (entry.webDashTips || 0) +
-            (entry.doorDashTips || 0) +
-            (entry.kioskTips || 0) +
-            (entry.chaosTips || 0) +
-            (entry.otherTips || 0);
+              const stats = getDateStaffStats(date);
+              const dayTotal =
+                (entry.webDashTips || 0) +
+                (entry.doorDashTips || 0) +
+                (entry.kioskTips || 0) +
+                (entry.otherTips || 0);
 
-          return (
-            <div
-              key={date}
-              style={{
-                background: 'rgba(15, 23, 42, 0.5)',
-                border: dayTotal > 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                padding: '14px 18px',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '12px',
-                  flexWrap: 'wrap',
-                  gap: '8px',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: dayTotal > 0 ? '#10b981' : '#64748b',
-                    }}
-                  />
-                  <div>
-                    <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
+              return (
+                <tr key={date}>
+                  <td>
+                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.88rem' }}>
                       {entry.displayDate || formatDisplayDate(date)}
-                    </span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '8px' }}>
-                      ({entry.dayOfWeek || getDayOfWeek(date)})
-                    </span>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  {/* Contextual shifts stats */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Users size={12} color="#60a5fa" />
-                      {stats.staffCount} staff on shift
-                    </span>
-                    <span>•</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Clock size={12} color="#34d399" />
-                      {stats.totalHours.toFixed(2)} hrs
-                    </span>
-                  </div>
-
-                  {/* Day total pill */}
-                  <div
-                    style={{
-                      fontSize: '0.9rem',
-                      fontWeight: 700,
-                      color: dayTotal > 0 ? '#34d399' : 'var(--text-muted)',
-                      background: dayTotal > 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255, 255, 255, 0.03)',
-                      padding: '4px 10px',
-                      borderRadius: 'var(--radius-pill)',
-                    }}
-                  >
-                    Day Total: ${dayTotal.toFixed(2)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Input Columns */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-                  gap: '12px',
-                }}
-              >
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
-                    WebDash Tips
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                      $
-                    </span>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {entry.dayOfWeek || getDayOfWeek(date)}
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                      <span style={{ fontWeight: 600 }}>{stats.staffCount} staff</span> • {stats.totalHours.toFixed(1)}h
+                    </div>
+                  </td>
+                  <td>
                     <input
                       type="number"
                       step="0.01"
@@ -270,19 +288,10 @@ export function DailyTipEntry({
                       value={entry.webDashTips || ''}
                       onChange={(e) => onInputChange(date, 'webDashTips', parseFloat(e.target.value) || 0)}
                       className="input-field"
-                      style={{ paddingLeft: '24px' }}
+                      style={{ padding: '6px 10px', fontSize: '0.85rem' }}
                     />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
-                    DoorDash Tips
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                      $
-                    </span>
+                  </td>
+                  <td>
                     <input
                       type="number"
                       step="0.01"
@@ -291,19 +300,10 @@ export function DailyTipEntry({
                       value={entry.doorDashTips || ''}
                       onChange={(e) => onInputChange(date, 'doorDashTips', parseFloat(e.target.value) || 0)}
                       className="input-field"
-                      style={{ paddingLeft: '24px' }}
+                      style={{ padding: '6px 10px', fontSize: '0.85rem' }}
                     />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
-                    Kiosk Tips
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                      $
-                    </span>
+                  </td>
+                  <td>
                     <input
                       type="number"
                       step="0.01"
@@ -312,35 +312,50 @@ export function DailyTipEntry({
                       value={entry.kioskTips || ''}
                       onChange={(e) => onInputChange(date, 'kioskTips', parseFloat(e.target.value) || 0)}
                       className="input-field"
-                      style={{ paddingLeft: '24px' }}
+                      style={{ padding: '6px 10px', fontSize: '0.85rem' }}
                     />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
-                    Chaos / Other Tips
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                      $
-                    </span>
+                  </td>
+                  <td>
                     <input
                       type="number"
                       step="0.01"
                       min="0"
                       placeholder="0.00"
-                      value={entry.chaosTips || ''}
-                      onChange={(e) => onInputChange(date, 'chaosTips', parseFloat(e.target.value) || 0)}
+                      value={entry.otherTips || ''}
+                      onChange={(e) => onInputChange(date, 'otherTips', parseFloat(e.target.value) || 0)}
                       className="input-field"
-                      style={{ paddingLeft: '24px' }}
+                      style={{ padding: '6px 10px', fontSize: '0.85rem' }}
                     />
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+                  </td>
+                  <td style={{ textAlign: 'right', fontWeight: 700, fontSize: '0.92rem', color: dayTotal > 0 ? '#818cf8' : 'var(--text-muted)' }}>
+                    ${dayTotal.toFixed(2)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr style={{ background: 'rgba(15, 23, 42, 0.95)', borderTop: '2px solid rgba(99, 102, 241, 0.3)' }}>
+              <td style={{ fontWeight: 800, color: 'var(--text-primary)' }}>TOTALS</td>
+              <td style={{ fontWeight: 700, color: '#60a5fa' }}>{totalCycleHours.toFixed(2)} hrs</td>
+              <td style={{ fontWeight: 700 }}>
+                ${cycleDates.reduce((s, d) => s + (dailyTipInputs[d]?.webDashTips || 0), 0).toFixed(2)}
+              </td>
+              <td style={{ fontWeight: 700 }}>
+                ${cycleDates.reduce((s, d) => s + (dailyTipInputs[d]?.doorDashTips || 0), 0).toFixed(2)}
+              </td>
+              <td style={{ fontWeight: 700 }}>
+                ${cycleDates.reduce((s, d) => s + (dailyTipInputs[d]?.kioskTips || 0), 0).toFixed(2)}
+              </td>
+              <td style={{ fontWeight: 700 }}>
+                ${cycleDates.reduce((s, d) => s + (dailyTipInputs[d]?.otherTips || 0), 0).toFixed(2)}
+              </td>
+              <td style={{ textAlign: 'right', fontWeight: 800, color: '#818cf8', fontSize: '1.05rem' }}>
+                ${totalEnteredTips.toFixed(2)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
   );

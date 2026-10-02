@@ -4,11 +4,11 @@ import React, { useState, useEffect } from 'react';
 import {
   Calculator,
   RotateCcw,
-  Sparkles,
   ArrowLeft,
   Building2,
   CheckCircle2,
   AlertCircle,
+  HelpCircle,
 } from 'lucide-react';
 import { LandingHero } from '../components/LandingHero';
 import { TipCycleSelector } from '../components/TipCycleSelector';
@@ -48,7 +48,6 @@ export default function Home() {
             webDashTips: 0,
             doorDashTips: 0,
             kioskTips: 0,
-            chaosTips: 0,
             otherTips: 0,
             totalTips: 0,
           };
@@ -68,7 +67,6 @@ export default function Home() {
         webDashTips: 0,
         doorDashTips: 0,
         kioskTips: 0,
-        chaosTips: 0,
         otherTips: 0,
         totalTips: 0,
       };
@@ -82,7 +80,6 @@ export default function Home() {
         (updatedDay.webDashTips || 0) +
         (updatedDay.doorDashTips || 0) +
         (updatedDay.kioskTips || 0) +
-        (updatedDay.chaosTips || 0) +
         (updatedDay.otherTips || 0);
 
       return {
@@ -90,6 +87,51 @@ export default function Home() {
         [date]: updatedDay,
       };
     });
+  };
+
+  // Called when time card is uploaded or sample is loaded
+  const handleShiftsLoaded = (
+    loadedShifts: ProcessedShift[],
+    fname: string,
+    extractedTips?: Record<string, number>,
+    detectedStart?: string,
+    detectedEnd?: string
+  ) => {
+    setShifts(loadedShifts);
+    setTimeCardFileName(fname);
+    setValidationError(null);
+
+    // Auto-update cycle dates if detected from file
+    if (detectedStart && detectedEnd) {
+      setStartDate(detectedStart);
+      setEndDate(detectedEnd);
+    }
+
+    // Auto-populate daily WebDash tips from time card
+    if (extractedTips && Object.keys(extractedTips).length > 0) {
+      setDailyTipInputs((prev) => {
+        const updated = { ...prev };
+        const newCycleDates = detectedStart && detectedEnd ? generateDateRange(detectedStart, detectedEnd) : cycleDates;
+        for (const d of newCycleDates) {
+          const extractedVal = extractedTips[d] !== undefined ? extractedTips[d] : updated[d]?.webDashTips || 0;
+          const doorDash = updated[d]?.doorDashTips || 0;
+          const kiosk = updated[d]?.kioskTips || 0;
+          const other = updated[d]?.otherTips || 0;
+
+          updated[d] = {
+            date: d,
+            displayDate: formatDisplayDate(d),
+            dayOfWeek: getDayOfWeek(d),
+            webDashTips: extractedVal,
+            doorDashTips: doorDash,
+            kioskTips: kiosk,
+            otherTips: other,
+            totalTips: extractedVal + doorDash + kiosk + other,
+          };
+        }
+        return updated;
+      });
+    }
   };
 
   // Run calculation action
@@ -164,12 +206,12 @@ export default function Home() {
                 width: '36px',
                 height: '36px',
                 borderRadius: '10px',
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                background: 'linear-gradient(135deg, #4f46e5 0%, #2563eb 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#ffffff',
-                boxShadow: '0 4px 15px rgba(16, 185, 129, 0.35)',
+                boxShadow: '0 4px 15px rgba(79, 70, 229, 0.35)',
               }}
             >
               <Calculator size={20} />
@@ -184,34 +226,25 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Restaurant Selector & Reset */}
+          {/* Restaurant Display (Only Mission Hill, no dummy restaurants) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Building2 size={16} color="#60a5fa" />
-              <select
-                value={selectedRestaurant.id}
-                onChange={(e) => {
-                  const rest = RESTAURANTS_DATABASE.find((r) => r.id === e.target.value);
-                  if (rest) setSelectedRestaurant(rest);
-                }}
-                style={{
-                  background: 'rgba(30, 41, 59, 0.85)',
-                  color: 'var(--text-primary)',
-                  border: '1px solid var(--border-medium)',
-                  borderRadius: 'var(--radius-pill)',
-                  padding: '6px 14px',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  outline: 'none',
-                }}
-              >
-                {RESTAURANTS_DATABASE.map((r) => (
-                  <option key={r.id} value={r.id} disabled={!r.active}>
-                    {r.name} {r.active ? '• Active' : '• Coming Soon'}
-                  </option>
-                ))}
-              </select>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'rgba(30, 41, 59, 0.85)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-medium)',
+                borderRadius: 'var(--radius-pill)',
+                padding: '6px 14px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+              }}
+            >
+              <Building2 size={15} color="#60a5fa" />
+              <span>{selectedRestaurant.name}</span>
+              <span style={{ fontSize: '0.72rem', color: '#818cf8', fontWeight: 700 }}>• Active</span>
             </div>
 
             {screen !== 'landing' && (
@@ -240,9 +273,9 @@ export default function Home() {
         )}
 
         {screen === 'setup' && (
-          <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '36px 20px 80px' }}>
+          <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '32px 20px 80px' }}>
             {/* Header info */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <button
                   onClick={() => setScreen('landing')}
@@ -256,13 +289,39 @@ export default function Home() {
                   Tip Calculation Setup
                 </h1>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                  Configure cycle dates, upload time cards, and input tips for {selectedRestaurant.name}.
+                  Manage payroll tip distribution for {selectedRestaurant.name}.
                 </p>
               </div>
 
-              <div className="badge badge-emerald" style={{ padding: '8px 14px' }}>
+              <div className="badge badge-indigo" style={{ padding: '8px 14px' }}>
                 <CheckCircle2 size={13} style={{ marginRight: '4px' }} />
-                Equal Tip Distribution
+                Equal Tip System
+              </div>
+            </div>
+
+            {/* Quick Step-by-Step Instructions Banner */}
+            <div
+              style={{
+                background: 'rgba(30, 41, 59, 0.45)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-md)',
+                padding: '14px 18px',
+                marginBottom: '22px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                fontSize: '0.82rem',
+                color: 'var(--text-secondary)',
+                flexWrap: 'wrap',
+              }}
+            >
+              <HelpCircle size={18} color="#818cf8" style={{ flexShrink: 0 }} />
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span><strong>1. Upload Time Card:</strong> Dates and WebDash tips automatically populate.</span>
+                <span style={{ color: 'var(--text-muted)' }}>→</span>
+                <span><strong>2. Review & Add Tips:</strong> Input DoorDash, Kiosk, or Other manual collections.</span>
+                <span style={{ color: 'var(--text-muted)' }}>→</span>
+                <span><strong>3. Calculate:</strong> View payouts and export client PDF.</span>
               </div>
             </div>
 
@@ -287,33 +346,37 @@ export default function Home() {
               </div>
             )}
 
-            {/* Step 1: Tip Cycle Selection */}
-            <TipCycleSelector
-              startDate={startDate}
-              endDate={endDate}
-              onChange={(s, e) => {
-                setStartDate(s);
-                setEndDate(e);
+            {/* Top Grid: Cycle Dates + Time Card Import side-by-side */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                gap: '18px',
+                marginBottom: '22px',
               }}
-            />
+            >
+              <TipCycleSelector
+                startDate={startDate}
+                endDate={endDate}
+                onChange={(s, e) => {
+                  setStartDate(s);
+                  setEndDate(e);
+                }}
+              />
 
-            {/* Step 2: Upload Time Cards */}
-            <TimeCardUploader
-              restaurant={selectedRestaurant}
-              shifts={shifts}
-              fileName={timeCardFileName}
-              onShiftsLoaded={(loadedShifts, fname) => {
-                setShifts(loadedShifts);
-                setTimeCardFileName(fname);
-                setValidationError(null);
-              }}
-              onClear={() => {
-                setShifts([]);
-                setTimeCardFileName(null);
-              }}
-            />
+              <TimeCardUploader
+                restaurant={selectedRestaurant}
+                shifts={shifts}
+                fileName={timeCardFileName}
+                onShiftsLoaded={handleShiftsLoaded}
+                onClear={() => {
+                  setShifts([]);
+                  setTimeCardFileName(null);
+                }}
+              />
+            </div>
 
-            {/* Step 3: Manual Daily Tip Entry */}
+            {/* Daily Tip Entry (Full Width Table with Top Sticky Action) */}
             <DailyTipEntry
               restaurant={selectedRestaurant}
               cycleDates={cycleDates}
@@ -321,25 +384,26 @@ export default function Home() {
               shifts={shifts}
               onInputChange={handleDailyInputChange}
               onBulkSet={(bulk) => setDailyTipInputs(bulk)}
+              onCalculate={handleRunCalculation}
             />
 
-            {/* Step 4: Run Calculation Action */}
-            <div style={{ marginTop: '36px', textAlign: 'center' }}>
+            {/* Bottom Calculate Action */}
+            <div style={{ marginTop: '28px', textAlign: 'center' }}>
               <button
                 onClick={handleRunCalculation}
                 className="btn-primary"
                 style={{
-                  padding: '16px 52px',
+                  padding: '16px 54px',
                   fontSize: '1.15rem',
                   fontWeight: 700,
                   cursor: 'pointer',
                   width: '100%',
-                  maxWidth: '420px',
+                  maxWidth: '440px',
                   margin: '0 auto',
                 }}
               >
                 <Calculator size={22} />
-                <span>Calculate Tips</span>
+                <span>Calculate Tips & Open Dashboard</span>
               </button>
             </div>
           </div>
@@ -353,7 +417,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* Clean, Discreet Footer (No harsh black) */}
+      {/* Clean, Discreet Footer */}
       <footer
         style={{
           borderTop: '1px solid var(--border-subtle)',

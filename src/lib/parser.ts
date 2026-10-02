@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { RestaurantConfig, ProcessedShift, RawShiftRow } from '../types/tips';
+import { RestaurantConfig, ProcessedShift, ParseTimecardResult } from '../types/tips';
 
 /**
  * Format a Date object to YYYY-MM-DD in local time
@@ -128,31 +128,76 @@ export function calculateBusinessDate(calendarDateStr: string, timeIn: string, c
 }
 
 /**
- * Parse an Excel or CSV file buffer/arrayBuffer into shifts
+ * Parse an Excel file buffer into shifts and daily tips
  */
 export function parseTimecardFile(
   fileData: ArrayBuffer | Uint8Array,
   restaurant: RestaurantConfig,
   referenceYear = 2026
-): { shifts: ProcessedShift[]; rawRowCount: number; errors: string[] } {
+): ParseTimecardResult {
   const workbook = XLSX.read(fileData, { type: 'array' });
-  const sheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[sheetName];
+  
+  // Try sheets to find the one with shift rows or the first sheet
+  let bestSheetName = workbook.SheetNames[0];
+  for (const sName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sName];
+    const testRows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    for (let r = 0; r < Math.min(15, testRows.length); r++) {
+      const rowStr = (testRows[r] || []).map((c) => String(c).toLowerCase()).join(' ');
+      if (rowStr.includes('name') && (rowStr.includes('role') || rowStr.includes('hours') || rowStr.includes('total hours'))) {
+        bestSheetName = sName;
+        break;
+      }
+    }
+  }
 
-  // Convert to array of arrays to handle flexible layouts
+  const worksheet = workbook.Sheets[bestSheetName];
   const rows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
 
-  return parseTimecardRows(rows, restaurant, referenceYear);
+  const result = parseTimecardRows(rows, restaurant, referenceYear);
+
+  // Also check if any sheet has explicit "Dashboard Tips" entries (like Mission Hill Excel)
+  for (const sName of workbook.SheetNames) {
+    const s = workbook.Sheets[sName];
+    const sRows: any[][] = XLSX.utils.sheet_to_json(s, { header: 1, defval: '' });
+    let currentDateForBlock = '';
+    for (let i = 0; i < sRows.length; i++) {
+      const row = sRows[i];
+      if (!row) continue;
+      // Date row in Excel sheet (often row[2] has a date or date number)
+      for (let c = 0; c < Math.min(5, row.length); c++) {
+        const val = row[c];
+        if (typeof val === 'number' && val > 40000 && val < 60000) {
+          const dStr = normalizeDate(val, referenceYear);
+          if (dStr) currentDateForBlock = dStr;
+        }
+      }
+      // Check for 'Dashboard Tips' label
+      const rowJoined = row.map((x) => String(x).toLowerCase()).join(' ');
+      if (rowJoined.includes('dashboard tips')) {
+        for (let c = 0; c < row.length; c++) {
+          const num = typeof row[c] === 'number' ? row[c] : parseFloat(String(row[c]));
+          if (!isNaN(num) && num > 0 && num < 10000 && currentDateForBlock) {
+            // Overwrite with higher fidelity Dashboard Tips if present in Excel
+            result.extractedDailyTips[currentDateForBlock] = Math.round(num * 100) / 100;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
 /**
- * Parse CSV text into shifts
+ * Parse CSV text into shifts and daily tips
  */
 export function parseTimecardCsv(
   csvText: string,
   restaurant: RestaurantConfig,
   referenceYear = 2026
-): { shifts: ProcessedShift[]; rawRowCount: number; errors: string[] } {
+): ParseTimecardResult {
   const workbook = XLSX.read(csvText, { type: 'string' });
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
@@ -168,12 +213,13 @@ export function parseTimecardRows(
   rows: any[][],
   restaurant: RestaurantConfig,
   referenceYear = 2026
-): { shifts: ProcessedShift[]; rawRowCount: number; errors: string[] } {
+): ParseTimecardResult {
   const shifts: ProcessedShift[] = [];
   const errors: string[] = [];
+  const extractedDailyTips: Record<string, number> = {};
 
   if (rows.length < 2) {
-    return { shifts: [], rawRowCount: 0, errors: ['File is empty or has no data rows.'] };
+    return { shifts: [], rawRowCount: 0, errors: ['File is empty or has no data rows.'], extractedDailyTips: {} };
   }
 
   // Find header row (looks for "Name", "Role", "Date", "Total Hours")
@@ -263,8 +309,13 @@ export function parseTimecardRows(
 
     const payRate = parseFloat(String(row[colIndex.payRate] || '0').replace(/[^\d.-]/g, '')) || 0;
     const netSale = parseFloat(String(row[colIndex.netSale] || '0').replace(/[^\d.-]/g, '')) || 0;
-    const posTips = parseFloat(String(row[colIndex.tips] || '0').replace(/[^\d.-]/g, '')) || 0;
-    const gratuity = parseFloat(String(row[colIndex.gratuity] || '0').replace(/[^\d.-]/g, '')) || 0;
+    const posTips = colIndex.tips !== -1 ? (parseFloat(String(row[colIndex.tips] || '0').replace(/[^\d.-]/g, '')) || 0) : 0;
+    const gratuity = colIndex.gratuity !== -1 ? (parseFloat(String(row[colIndex.gratuity] || '0').replace(/[^\d.-]/g, '')) || 0) : 0;
+
+    // Accumulate tips from time card per business day
+    if (posTips > 0) {
+      extractedDailyTips[businessDate] = (extractedDailyTips[businessDate] || 0) + posTips;
+    }
 
     shifts.push({
       id: `shift-${shifts.length + 1}`,
@@ -285,5 +336,22 @@ export function parseTimecardRows(
     });
   }
 
-  return { shifts, rawRowCount: rows.length, errors };
+  // Round accumulated tips
+  for (const date of Object.keys(extractedDailyTips)) {
+    extractedDailyTips[date] = Math.round(extractedDailyTips[date] * 100) / 100;
+  }
+
+  // Detect min and max business dates
+  const dates = shifts.map((s) => s.businessDate).filter(Boolean).sort();
+  const detectedStartDate = dates[0] || undefined;
+  const detectedEndDate = dates[dates.length - 1] || undefined;
+
+  return {
+    shifts,
+    rawRowCount: rows.length,
+    errors,
+    detectedStartDate,
+    detectedEndDate,
+    extractedDailyTips,
+  };
 }
