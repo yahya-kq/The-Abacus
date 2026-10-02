@@ -1,203 +1,137 @@
 'use client';
 
-import React from 'react';
-import { ArrowRight, Calculator, CheckCircle2, ShieldCheck, Sparkles, FileSpreadsheet, FileText, Layers, Award } from 'lucide-react';
+import React, { useState } from 'react';
+import { Calculator, ArrowRight } from 'lucide-react';
+import { Interactive3DAbacus } from './Interactive3DAbacus';
 
 interface LandingHeroProps {
   onStart: () => void;
-  onQuickDemo: () => void;
 }
 
-export function LandingHero({ onStart, onQuickDemo }: LandingHeroProps) {
+export function LandingHero({ onStart }: LandingHeroProps) {
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    setTilt({
+      x: -y * 12, // tilt X based on vertical mouse
+      y: x * 14,  // tilt Y based on horizontal mouse
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setTilt({ x: 0, y: 0 });
+  };
+
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '60px 24px 100px' }}>
-      {/* Top Banner Badge */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+    <div
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        position: 'relative',
+        minHeight: 'calc(100vh - 76px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        padding: '24px 20px',
+      }}
+    >
+      {/* Interactive 3D Abacus Background */}
+      <Interactive3DAbacus />
+
+      {/* Central 3D Focus Card with Reactive Mouse Tilt */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 10,
+          textAlign: 'center',
+          maxWidth: '520px',
+          width: '100%',
+          padding: '48px 36px',
+          background: 'rgba(30, 41, 59, 0.72)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          borderRadius: '24px',
+          border: '1px solid rgba(255, 255, 255, 0.14)',
+          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(16, 185, 129, 0.12)',
+          transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+          transition: 'transform 0.15s ease-out, box-shadow 0.25s ease',
+        }}
+      >
+        {/* Sleek Abacus Emblem */}
         <div
-          className="badge badge-emerald floating-element"
           style={{
-            padding: '8px 16px',
-            fontSize: '0.8rem',
-            border: '1px solid rgba(16, 185, 129, 0.4)',
-            boxShadow: '0 0 20px rgba(16, 185, 129, 0.2)',
+            width: '68px',
+            height: '68px',
+            borderRadius: '18px',
+            background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff',
+            boxShadow: '0 10px 25px rgba(16, 185, 129, 0.35)',
+            marginBottom: '22px',
           }}
         >
-          <Sparkles size={14} style={{ marginRight: '6px' }} />
-          ABACUS ENGINE 2.0 • MISSION HILL RESTAURANT READY
+          <Calculator size={34} />
         </div>
-      </div>
 
-      {/* Main Hero Header */}
-      <div style={{ textAlign: 'center', maxWidth: '840px', margin: '0 auto 40px' }}>
+        {/* Brand Name & Purpose */}
         <h1
           style={{
-            fontSize: 'clamp(2.5rem, 5vw, 4.2rem)',
+            fontSize: '2.9rem',
             fontWeight: 800,
-            lineHeight: 1.15,
             letterSpacing: '-0.03em',
-            marginBottom: '20px',
-            background: 'linear-gradient(180deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            color: '#ffffff',
+            lineHeight: 1.1,
+            marginBottom: '8px',
           }}
         >
-          Precision Restaurant Tip Calculations, Simplified.
+          ABACUS
         </h1>
         <p
           style={{
-            fontSize: 'clamp(1.05rem, 2vw, 1.25rem)',
-            color: 'var(--text-secondary)',
-            lineHeight: 1.6,
-            fontWeight: 400,
-            maxWidth: '680px',
-            margin: '0 auto 36px',
+            fontSize: '1.05rem',
+            color: '#94a3b8',
+            fontWeight: 500,
+            marginBottom: '38px',
           }}
         >
-          Transform raw time cards and daily tip collections into audited, payroll-ready employee payouts in seconds. Built for Mission Hill, engineered to scale across 40+ restaurant tip pool structures.
+          Restaurant Tip Calculator
         </p>
 
-        {/* Central CTA - Run Abacus */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        {/* Prominent Primary Action Button */}
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
           <button
+            id="run-abacus-btn"
             onClick={onStart}
-            className="btn-primary pulse-glow"
+            type="button"
+            className="btn-primary"
             style={{
-              padding: '18px 42px',
-              fontSize: '1.15rem',
-              letterSpacing: '0.02em',
+              padding: '18px 48px',
+              fontSize: '1.18rem',
               fontWeight: 700,
+              letterSpacing: '0.01em',
+              borderRadius: '9999px',
               cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '12px',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              boxShadow: '0 8px 32px rgba(16, 185, 129, 0.45)',
+              position: 'relative',
+              zIndex: 20,
+              pointerEvents: 'auto',
             }}
           >
             <Calculator size={22} />
             <span>Run Abacus</span>
             <ArrowRight size={20} />
           </button>
-
-          <button
-            onClick={onQuickDemo}
-            className="btn-secondary"
-            style={{
-              padding: '18px 28px',
-              fontSize: '1rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            <Sparkles size={18} color="#34d399" />
-            <span>1-Click Verified Demo (Sep 7–20)</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 3D Visual Cards Showcase */}
-      <div
-        className="perspective-container"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '24px',
-          marginTop: '60px',
-        }}
-      >
-        {/* Feature 1 */}
-        <div className="glass-panel card-3d glass-panel-hover" style={{ padding: '32px 28px' }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
-              background: 'rgba(16, 185, 129, 0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '20px',
-              color: '#34d399',
-            }}
-          >
-            <CheckCircle2 size={26} />
-          </div>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '10px' }}>
-            Mathematical Precision ($0.00 Differ)
-          </h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-            Every cent is accounted for. Daily hours and tips match the source Excel formulas down to the exact decimal with automated reconciliation checks.
-          </p>
-        </div>
-
-        {/* Feature 2 */}
-        <div className="glass-panel card-3d glass-panel-hover" style={{ padding: '32px 28px' }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
-              background: 'rgba(59, 130, 246, 0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '20px',
-              color: '#60a5fa',
-            }}
-          >
-            <Layers size={26} />
-          </div>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '10px' }}>
-            Total Hours Integrity
-          </h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-            Strict adherence to restaurant policy: tips are calculated strictly on total hours from time cards, without splitting regular or overtime hours.
-          </p>
-        </div>
-
-        {/* Feature 3 */}
-        <div className="glass-panel card-3d glass-panel-hover" style={{ padding: '32px 28px' }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
-              background: 'rgba(139, 92, 246, 0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '20px',
-              color: '#c084fc',
-            }}
-          >
-            <ShieldCheck size={26} />
-          </div>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '10px' }}>
-            Toast POS Pool Governance
-          </h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-            Direct replication of your POS tip pool rules: 100% contributors (Server, Cashier, Owner, Kiosk, Online, QR, 3PO) and equal distribution recipients.
-          </p>
-        </div>
-
-        {/* Feature 4 */}
-        <div className="glass-panel card-3d glass-panel-hover" style={{ padding: '32px 28px' }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
-              background: 'rgba(245, 158, 11, 0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '20px',
-              color: '#fbbf24',
-            }}
-          >
-            <FileText size={26} />
-          </div>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '10px' }}>
-            Client-Ready PDF Statement
-          </h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-            Instant download of a beautiful, clean, non-cluttered PDF report suitable for restaurant owners, general managers, and payroll processing.
-          </p>
         </div>
       </div>
     </div>
