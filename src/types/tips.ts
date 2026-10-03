@@ -1,49 +1,51 @@
 export type TipSystemType = 'equal' | 'pooling' | 'percentage' | 'points';
 
-export interface ContributorRule {
-  role: string;
-  percentage: number;
-  isManualSource?: boolean;
-}
+export type PoolContributionMethod = 'percentage_of_tips' | 'percentage_of_sales';
+export type PoolDistributionMethod = 'Equally' | 'Percentage' | 'Points';
 
-export interface RecipientRule {
-  role: string;
-  distribution: TipSystemType;
-  weight?: number; // for points or percentage
-}
-
-export interface ManualTipField {
+export interface ContributorConfig {
   id: string;
-  label: string;
-  placeholder?: string;
-  description?: string;
-}
-
-export interface RestaurantConfig {
-  id: string;
-  name: string;
-  systemType: TipSystemType;
-  description: string;
-  active: boolean;
-  businessDayCutoffHour: number; // e.g., 12 (shifts before 12 PM belong to previous calendar day's business day)
-  contributors: ContributorRule[];
-  recipients: RecipientRule[];
-  manualTipFields: ManualTipField[];
-}
-
-export interface RawShiftRow {
-  name: string;
   role: string;
-  payRate?: number;
-  dateStr: string;
-  timeIn: string;
-  timeOut: string;
-  regularHours?: number;
-  overtimeHours?: number;
-  totalHours: number; // The decisive metric from time card
-  netSale?: number;
-  tips?: number;
-  gratuity?: number;
+  contributionPercent: number; // e.g. 100 for 100%, 5 for 5%
+  source: string; // 'All', 'Food', 'Beverage', etc.
+}
+
+export interface SourceToggleItem {
+  enabled: boolean;
+  percent: number;
+  source?: string;
+}
+
+export interface SourceToggles {
+  kiosk: SourceToggleItem;
+  online: SourceToggleItem;
+  qr: SourceToggleItem;
+  thirdParty: SourceToggleItem;
+}
+
+export interface RecipientConfig {
+  id: string;
+  role: string;
+  distributionPercent?: number; // e.g. 60 for 60%
+  pointsPerHour?: number; // e.g. 2 for 2 points
+}
+
+export interface TipPoolSettings {
+  poolName: string;
+  restaurantName: string;
+  dateMode: 'single' | 'range';
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  timePeriod: 'all_day' | 'specific';
+  specificStartTime?: string;
+  specificEndTime?: string;
+  splitSetup: PoolContributionMethod; // 'percentage_of_tips' | 'percentage_of_sales'
+  contributors: ContributorConfig[];
+  sources: SourceToggles;
+  distributionMethod: PoolDistributionMethod; // 'Equally' | 'Percentage' | 'Points'
+  recipients: RecipientConfig[];
+  businessDayCutoffHour: number; // e.g. 12
+  timezone: string; // e.g. 'America/New_York'
 }
 
 export interface ProcessedShift {
@@ -54,9 +56,11 @@ export interface ProcessedShift {
   rawDate: string;
   timeIn: string;
   timeOut: string;
-  totalHours: number;
+  regularHours?: number;
+  overtimeHours?: number;
+  totalHours: number; // Decisive metric
   netSale: number;
-  posTips: number;
+  collectedTips: number; // Replaces previous posTips
   gratuity: number;
   calendarDate: string; // YYYY-MM-DD
   businessDate: string; // YYYY-MM-DD
@@ -82,8 +86,13 @@ export interface EmployeeDailyDetail {
   employeeName: string;
   role: string;
   hours: number;
+  netSale: number;
+  collectedTips: number;
+  contributionAmount: number;
+  keptTips: number;
+  poolShare: number;
+  totalPayout: number;
   dailyRate: number;
-  tipsEarned: number;
   percentageOfDailyPool: number;
 }
 
@@ -97,9 +106,11 @@ export interface DailyCalculationResult {
     kiosk: number;
     other: number;
   };
-  totalTips: number;
-  totalHours: number;
+  totalPool: number;
+  totalRecipientHours: number;
+  totalRecipientPointHours?: number;
   perHourValue: number;
+  perPointValue?: number;
   employees: EmployeeDailyDetail[];
 }
 
@@ -107,28 +118,39 @@ export interface EmployeeCycleSummary {
   employeeName: string;
   role: string;
   totalHours: number;
-  totalTips: number;
+  totalNetSales: number;
+  totalCollectedTips: number;
+  totalContribution: number;
+  totalKeptTips: number;
+  totalPoolReceived: number;
+  totalPayout: number;
   averagePerHourTip: number;
   shiftCount: number;
   dailyBreakdown: EmployeeDailyDetail[];
 }
 
 export interface CycleCalculationResult {
-  restaurant: RestaurantConfig;
+  poolName: string;
+  restaurantName: string;
+  distributionMethod: PoolDistributionMethod;
+  splitSetup: PoolContributionMethod;
   startDate: string;
   endDate: string;
-  totalTips: number;
-  totalHours: number;
+  totalPool: number;
+  totalDistributed: number;
+  totalRecipientHours: number;
   averagePerHourValue: number;
   totalEligibleEmployees: number;
   totalShiftsWorked: number;
+  totalKeptTips: number;
+  totalOverallPayout: number;
   dailyCalculations: DailyCalculationResult[];
   employeeSummaries: EmployeeCycleSummary[];
   excludedShiftsCount: number;
   excludedRoles: string[];
   reconciliation: {
-    totalInputTips: number;
-    totalDistributedTips: number;
+    totalInputPool: number;
+    totalDistributedPool: number;
     difference: number;
   };
 }
@@ -139,5 +161,5 @@ export interface ParseTimecardResult {
   errors: string[];
   detectedStartDate?: string;
   detectedEndDate?: string;
-  extractedDailyTips: Record<string, number>; // date (YYYY-MM-DD) -> sum of tips from file
+  extractedDailyTips: Record<string, number>; // date -> sum of tips
 }

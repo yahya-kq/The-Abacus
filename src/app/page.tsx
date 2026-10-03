@@ -1,66 +1,148 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import {
-  Calculator,
-  RotateCcw,
-  ArrowLeft,
-  Building2,
-  CheckCircle2,
-  AlertCircle,
-  HelpCircle,
-} from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Sidebar, NavScreen } from '../components/Sidebar';
 import { LandingHero } from '../components/LandingHero';
-import { TipCycleSelector } from '../components/TipCycleSelector';
-import { TimeCardUploader } from '../components/TimeCardUploader';
-import { DailyTipEntry } from '../components/DailyTipEntry';
+import { SetupPage } from '../components/SetupPage';
+import { TimeCardsPage } from '../components/TimeCardsPage';
 import { CalculationDashboard } from '../components/CalculationDashboard';
-import { RESTAURANTS_DATABASE, DEFAULT_RESTAURANT } from '../config/restaurants';
-import { ProcessedShift, DailyTipInput, CycleCalculationResult, RestaurantConfig } from '../types/tips';
-import { generateDateRange, calculateTipCycle } from '../lib/calculator';
-import { formatDisplayDate, getDayOfWeek, parseTimecardCsv } from '../lib/parser';
-import { MISSION_HILL_SAMPLE_CSV, MISSION_HILL_SAMPLE_TIPS } from '../lib/sampleData';
+import {
+  TipPoolSettings,
+  ProcessedShift,
+  DailyTipInput,
+  CycleCalculationResult,
+} from '../types/tips';
+import { calculateTipCycle, generateDateRange } from '../lib/calculator';
+import { formatDisplayDate, getDayOfWeek } from '../lib/parser';
+import { TEST_1_SHIFTS, TEST_1_EXTRACTED_TIPS } from '../lib/testSampleData';
 
 export default function Home() {
-  const [screen, setScreen] = useState<'landing' | 'setup' | 'dashboard'>('landing');
-  const [selectedRestaurant, setSelectedRestaurant] = useState<RestaurantConfig>(DEFAULT_RESTAURANT);
-  const [startDate, setStartDate] = useState('2026-09-07');
-  const [endDate, setEndDate] = useState('2026-09-20');
-  const [shifts, setShifts] = useState<ProcessedShift[]>([]);
-  const [timeCardFileName, setTimeCardFileName] = useState<string | null>(null);
+  const [currentScreen, setCurrentScreen] = useState<NavScreen>('hero');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Default Pool Settings matching Test-1 Excel Model
+  const [settings, setSettings] = useState<TipPoolSettings>({
+    poolName: 'Mission Hill Tip Pool',
+    restaurantName: 'Mission Hill',
+    dateMode: 'range',
+    startDate: '2026-09-07',
+    endDate: '2026-09-20',
+    timePeriod: 'all_day',
+    splitSetup: 'percentage_of_tips',
+    contributors: [
+      { id: 'c1', role: 'Summary', contributionPercent: 100, source: 'All' },
+      { id: 'c2', role: 'Kiosk', contributionPercent: 100, source: 'All' },
+    ],
+    sources: {
+      kiosk: { enabled: true, percent: 100 },
+      online: { enabled: true, percent: 100 },
+      qr: { enabled: false, percent: 100 },
+      thirdParty: { enabled: true, percent: 100, source: 'All' },
+    },
+    distributionMethod: 'Equally',
+    recipients: [
+      { id: 'r1', role: 'Barista', distributionPercent: 100, pointsPerHour: 1 },
+    ],
+    businessDayCutoffHour: 12,
+    timezone: 'America/New_York',
+  });
+
+  // Shifts state (preloaded with Test-1 data so app is active immediately)
+  const [shifts, setShifts] = useState<ProcessedShift[]>(TEST_1_SHIFTS);
+  const [timeCardFileName, setTimeCardFileName] = useState<string | null>('tip_pool_calculator_Test-1 1.xlsx');
   const [dailyTipInputs, setDailyTipInputs] = useState<Record<string, DailyTipInput>>({});
-  const [calculationResult, setCalculationResult] = useState<CycleCalculationResult | null>(null);
-  const [validationError, setValidationError] = useState<string | null>(null);
 
-  // Generate cycle dates
-  const cycleDates = generateDateRange(startDate, endDate);
+  // Show temporary toast
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3500);
+  };
 
-  // Initialize or update daily tip inputs when cycle dates change
+  // Sync dailyTipInputs when date range or extracted tips change
+  const cycleDates = useMemo(
+    () => generateDateRange(settings.startDate, settings.endDate),
+    [settings.startDate, settings.endDate]
+  );
+
   useEffect(() => {
     setDailyTipInputs((prev) => {
       const updated = { ...prev };
       for (const d of cycleDates) {
         if (!updated[d]) {
+          const preExtracted = TEST_1_EXTRACTED_TIPS[d] || 0;
           updated[d] = {
             date: d,
             displayDate: formatDisplayDate(d),
             dayOfWeek: getDayOfWeek(d),
-            webDashTips: 0,
+            webDashTips: Math.round(preExtracted * 0.7 * 100) / 100,
             doorDashTips: 0,
-            kioskTips: 0,
+            kioskTips: Math.round(preExtracted * 0.3 * 100) / 100,
             otherTips: 0,
-            totalTips: 0,
+            totalTips: preExtracted,
           };
         }
       }
       return updated;
     });
-  }, [startDate, endDate]);
+  }, [cycleDates]);
 
-  // Handle single field input in DailyTipEntry
+  // Handle shifts loaded from file
+  const handleShiftsLoaded = (
+    loadedShifts: ProcessedShift[],
+    fname: string,
+    extractedTips?: Record<string, number>,
+    detectedStart?: string,
+    detectedEnd?: string
+  ) => {
+    setShifts(loadedShifts);
+    setTimeCardFileName(fname);
+
+    const updatedSettings = { ...settings };
+    if (detectedStart) updatedSettings.startDate = detectedStart;
+    if (detectedEnd) updatedSettings.endDate = detectedEnd;
+
+    // Detect roles from uploaded file
+    const rolesInShifts = Array.from(new Set(loadedShifts.map((s) => s.role))).filter(Boolean);
+    const hasBarista = rolesInShifts.some((r) => r.toLowerCase() === 'barista');
+    const hasServer = rolesInShifts.some((r) => r.toLowerCase() === 'server');
+
+    if (hasBarista && !updatedSettings.recipients.some((r) => r.role.toLowerCase() === 'barista')) {
+      updatedSettings.recipients = [{ id: 'r-barista', role: 'Barista', distributionPercent: 100, pointsPerHour: 1 }];
+    } else if (hasServer && !updatedSettings.recipients.some((r) => r.role.toLowerCase() === 'server')) {
+      updatedSettings.recipients = [{ id: 'r-server', role: 'Server', distributionPercent: 100, pointsPerHour: 1 }];
+    }
+
+    setSettings(updatedSettings);
+
+    if (extractedTips && Object.keys(extractedTips).length > 0) {
+      setDailyTipInputs((prev) => {
+        const next = { ...prev };
+        for (const [date, amount] of Object.entries(extractedTips)) {
+          next[date] = {
+            date,
+            displayDate: formatDisplayDate(date),
+            dayOfWeek: getDayOfWeek(date),
+            webDashTips: Math.round(amount * 0.7 * 100) / 100,
+            doorDashTips: 0,
+            kioskTips: Math.round(amount * 0.3 * 100) / 100,
+            otherTips: 0,
+            totalTips: amount,
+          };
+        }
+        return next;
+      });
+    }
+
+    showToast(`Loaded ${loadedShifts.length} shifts from ${fname}`);
+  };
+
+  // Handle daily tip input field change
   const handleDailyInputChange = (date: string, field: keyof DailyTipInput, value: number) => {
     setDailyTipInputs((prev) => {
-      const day = prev[date] || {
+      const current = prev[date] || {
         date,
         displayDate: formatDisplayDate(date),
         dayOfWeek: getDayOfWeek(date),
@@ -71,372 +153,225 @@ export default function Home() {
         totalTips: 0,
       };
 
-      const updatedDay = {
-        ...day,
-        [field]: value,
-      };
+      const updated = { ...current, [field]: value };
+      updated.totalTips =
+        (updated.webDashTips || 0) +
+        (updated.doorDashTips || 0) +
+        (updated.kioskTips || 0) +
+        (updated.otherTips || 0);
 
-      updatedDay.totalTips =
-        (updatedDay.webDashTips || 0) +
-        (updatedDay.doorDashTips || 0) +
-        (updatedDay.kioskTips || 0) +
-        (updatedDay.otherTips || 0);
-
-      return {
-        ...prev,
-        [date]: updatedDay,
-      };
+      return { ...prev, [date]: updated };
     });
   };
 
-  // Called when time card is uploaded or sample is loaded
-  const handleShiftsLoaded = (
-    loadedShifts: ProcessedShift[],
-    fname: string,
-    extractedTips?: Record<string, number>,
-    detectedStart?: string,
-    detectedEnd?: string
-  ) => {
-    setShifts(loadedShifts);
-    setTimeCardFileName(fname);
-    setValidationError(null);
-
-    // Auto-update cycle dates if detected from file
-    if (detectedStart && detectedEnd) {
-      setStartDate(detectedStart);
-      setEndDate(detectedEnd);
-    }
-
-    // Auto-populate daily WebDash tips from time card
-    if (extractedTips && Object.keys(extractedTips).length > 0) {
-      setDailyTipInputs((prev) => {
-        const updated = { ...prev };
-        const newCycleDates = detectedStart && detectedEnd ? generateDateRange(detectedStart, detectedEnd) : cycleDates;
-        for (const d of newCycleDates) {
-          const extractedVal = extractedTips[d] !== undefined ? extractedTips[d] : updated[d]?.webDashTips || 0;
-          const doorDash = updated[d]?.doorDashTips || 0;
-          const kiosk = updated[d]?.kioskTips || 0;
-          const other = updated[d]?.otherTips || 0;
-
-          updated[d] = {
-            date: d,
-            displayDate: formatDisplayDate(d),
-            dayOfWeek: getDayOfWeek(d),
-            webDashTips: extractedVal,
-            doorDashTips: doorDash,
-            kioskTips: kiosk,
-            otherTips: other,
-            totalTips: extractedVal + doorDash + kiosk + other,
-          };
-        }
-        return updated;
-      });
-    }
-  };
-
-  // Run calculation action
-  const handleRunCalculation = () => {
-    setValidationError(null);
-
-    if (shifts.length === 0) {
-      setValidationError('Please upload a time card file before calculating tips.');
-      return;
-    }
-
-    try {
-      const result = calculateTipCycle(
-        selectedRestaurant,
-        startDate,
-        endDate,
-        shifts,
-        dailyTipInputs
-      );
-
-      setCalculationResult(result);
-      setScreen('dashboard');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err: any) {
-      console.error(err);
-      setValidationError(`Calculation error: ${err.message || 'Unknown error'}`);
-    }
-  };
-
-  // Reset entire session
-  const handleReset = () => {
+  // Hard Refresh (Clear all in-memory data back to clean state as requested in Audio 2)
+  const handleHardRefresh = () => {
     setShifts([]);
     setTimeCardFileName(null);
     setDailyTipInputs({});
-    setCalculationResult(null);
-    setValidationError(null);
-    setScreen('landing');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setSettings((prev) => ({
+      ...prev,
+      poolName: '',
+      restaurantName: '',
+      contributors: [],
+      recipients: [],
+    }));
+    showToast('Hard Refresh Complete: All shifts and temporary inputs cleared.');
   };
 
+  // Quick reload Test-1 Sample Dataset
+  const handleLoadTestData = () => {
+    setShifts(TEST_1_SHIFTS);
+    setTimeCardFileName('tip_pool_calculator_Test-1 1.xlsx');
+    setSettings({
+      poolName: 'Mission Hill Tip Pool',
+      restaurantName: 'Mission Hill',
+      dateMode: 'range',
+      startDate: '2026-09-07',
+      endDate: '2026-09-20',
+      timePeriod: 'all_day',
+      splitSetup: 'percentage_of_tips',
+      contributors: [
+        { id: 'c1', role: 'Summary', contributionPercent: 100, source: 'All' },
+        { id: 'c2', role: 'Kiosk', contributionPercent: 100, source: 'All' },
+      ],
+      sources: {
+        kiosk: { enabled: true, percent: 100 },
+        online: { enabled: true, percent: 100 },
+        qr: { enabled: false, percent: 100 },
+        thirdParty: { enabled: true, percent: 100, source: 'All' },
+      },
+      distributionMethod: 'Equally',
+      recipients: [
+        { id: 'r1', role: 'Barista', distributionPercent: 100, pointsPerHour: 1 },
+      ],
+      businessDayCutoffHour: 12,
+      timezone: 'America/New_York',
+    });
+
+    const nextInputs: Record<string, DailyTipInput> = {};
+    for (const [date, amount] of Object.entries(TEST_1_EXTRACTED_TIPS)) {
+      nextInputs[date] = {
+        date,
+        displayDate: formatDisplayDate(date),
+        dayOfWeek: getDayOfWeek(date),
+        webDashTips: Math.round(amount * 0.7 * 100) / 100,
+        doorDashTips: 0,
+        kioskTips: Math.round(amount * 0.3 * 100) / 100,
+        otherTips: 0,
+        totalTips: amount,
+      };
+    }
+    setDailyTipInputs(nextInputs);
+
+    showToast('Test-1 Sample Dataset loaded successfully (82 active shifts).');
+  };
+
+  // Instant Memoized Calculation Result
+  const calculationResult: CycleCalculationResult = useMemo(() => {
+    return calculateTipCycle(settings, shifts, dailyTipInputs);
+  }, [settings, shifts, dailyTipInputs]);
+
   return (
-    <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Sleek Frosted Glass Top Bar (No harsh black) */}
-      <nav
-        style={{
-          borderBottom: '1px solid var(--border-subtle)',
-          background: 'rgba(15, 23, 42, 0.75)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-          padding: '14px 24px',
-        }}
-      >
-        <div
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-primary)' }}>
+      {/* Collapsible Sidebar */}
+      <Sidebar
+        currentScreen={currentScreen}
+        onNavigate={(screen) => setCurrentScreen(screen)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        onHardRefresh={handleHardRefresh}
+        onLoadTestData={handleLoadTestData}
+      />
+
+      {/* Main Content Area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        {/* Clean Top Navigation Bar (No marketing links, simple ABACUS text) */}
+        <header
           style={{
-            maxWidth: '1240px',
-            margin: '0 auto',
+            height: '60px',
+            borderBottom: '1px solid rgba(139, 142, 222, 0.14)',
+            background: 'rgba(21, 19, 54, 0.75)',
+            backdropFilter: 'blur(16px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            padding: '0 28px',
+            position: 'sticky',
+            top: 0,
+            zIndex: 40,
           }}
         >
-          {/* Logo & Brand */}
-          <div
-            onClick={() => setScreen('landing')}
-            style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
-          >
-            <div
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <span
               style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '10px',
-                background: 'linear-gradient(135deg, #4f46e5 0%, #2563eb 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                fontSize: '1.25rem',
+                fontWeight: 800,
+                letterSpacing: '-0.02em',
                 color: '#ffffff',
-                boxShadow: '0 4px 15px rgba(79, 70, 229, 0.35)',
               }}
             >
-              <Calculator size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-                ABACUS
-              </div>
-              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '-2px' }}>
-                Tip Calculator
-              </div>
-            </div>
+              ABACUS
+            </span>
+            <span style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>|</span>
+            <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+              {currentScreen === 'hero' && 'Welcome'}
+              {currentScreen === 'setup' && 'Tip Pool Configuration'}
+              {currentScreen === 'timecards' && 'Time Cards Ledger'}
+              {currentScreen === 'dashboard' && 'Calculation Dashboard'}
+            </span>
           </div>
 
-          {/* Restaurant Display (Only Mission Hill, no dummy restaurants) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: 'rgba(30, 41, 59, 0.85)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-medium)',
-                borderRadius: 'var(--radius-pill)',
-                padding: '6px 14px',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-              }}
-            >
-              <Building2 size={15} color="#60a5fa" />
-              <span>{selectedRestaurant.name}</span>
-              <span style={{ fontSize: '0.72rem', color: '#818cf8', fontWeight: 700 }}>• Active</span>
-            </div>
-
-            {screen !== 'landing' && (
-              <button
-                onClick={handleReset}
-                className="btn-secondary"
-                style={{ padding: '6px 14px', fontSize: '0.82rem', color: '#fb7185' }}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {timeCardFileName && (
+              <span
+                style={{
+                  fontSize: '0.8rem',
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-pill)',
+                  background: 'rgba(108, 99, 255, 0.15)',
+                  border: '1px solid rgba(108, 99, 255, 0.3)',
+                  color: '#9ca3ff',
+                }}
               >
-                <RotateCcw size={13} />
-                <span>Reset</span>
-              </button>
+                {timeCardFileName}
+              </span>
             )}
           </div>
-        </div>
-      </nav>
+        </header>
 
-      {/* Main Content Area */}
-      <div style={{ flex: 1 }}>
-        {screen === 'landing' && (
-          <LandingHero
-            onStart={() => {
-              setScreen('setup');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+        {/* Toast Notification */}
+        {toastMessage && (
+          <div
+            style={{
+              position: 'fixed',
+              bottom: '24px',
+              right: '24px',
+              zIndex: 9999,
+              background: '#19173f',
+              border: '1px solid rgba(108, 99, 255, 0.4)',
+              color: '#ffffff',
+              padding: '12px 20px',
+              borderRadius: 'var(--radius-md)',
+              boxShadow: '0 12px 32px rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              fontSize: '0.9rem',
+              fontWeight: 500,
+              animation: 'fadeIn 0.2s ease',
             }}
-          />
-        )}
-
-        {screen === 'setup' && (
-          <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '32px 20px 80px' }}>
-            {/* Header info */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <button
-                  onClick={() => setScreen('landing')}
-                  className="btn-secondary"
-                  style={{ padding: '6px 12px', fontSize: '0.8rem', marginBottom: '10px' }}
-                >
-                  <ArrowLeft size={14} />
-                  <span>Back to Start</span>
-                </button>
-                <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>
-                  Tip Calculation Setup
-                </h1>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                  Manage payroll tip distribution for {selectedRestaurant.name}.
-                </p>
-              </div>
-
-              <div className="badge badge-indigo" style={{ padding: '8px 14px' }}>
-                <CheckCircle2 size={13} style={{ marginRight: '4px' }} />
-                Equal Tip System
-              </div>
-            </div>
-
-            {/* Quick Step-by-Step Instructions Banner */}
-            <div
+          >
+            <span
               style={{
-                background: 'rgba(30, 41, 59, 0.45)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                padding: '14px 18px',
-                marginBottom: '22px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                fontSize: '0.82rem',
-                color: 'var(--text-secondary)',
-                flexWrap: 'wrap',
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: '#00e5a3',
+                boxShadow: '0 0 8px #00e5a3',
               }}
-            >
-              <HelpCircle size={18} color="#818cf8" style={{ flexShrink: 0 }} />
-              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-                <span><strong>1. Upload Time Card:</strong> Dates and WebDash tips automatically populate.</span>
-                <span style={{ color: 'var(--text-muted)' }}>→</span>
-                <span><strong>2. Review & Add Tips:</strong> Input DoorDash, Kiosk, or Other manual collections.</span>
-                <span style={{ color: 'var(--text-muted)' }}>→</span>
-                <span><strong>3. Calculate:</strong> View payouts and export client PDF.</span>
-              </div>
-            </div>
-
-            {/* Validation alert */}
-            {validationError && (
-              <div
-                style={{
-                  background: 'rgba(244, 63, 94, 0.15)',
-                  border: '1px solid rgba(244, 63, 94, 0.3)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '14px 18px',
-                  color: '#fb7185',
-                  fontSize: '0.9rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  marginBottom: '20px',
-                }}
-              >
-                <AlertCircle size={20} />
-                <span>{validationError}</span>
-              </div>
-            )}
-
-            {/* Top Grid: Cycle Dates + Time Card Import side-by-side */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                gap: '18px',
-                marginBottom: '22px',
-              }}
-            >
-              <TipCycleSelector
-                startDate={startDate}
-                endDate={endDate}
-                onChange={(s, e) => {
-                  setStartDate(s);
-                  setEndDate(e);
-                }}
-              />
-
-              <TimeCardUploader
-                restaurant={selectedRestaurant}
-                shifts={shifts}
-                fileName={timeCardFileName}
-                onShiftsLoaded={handleShiftsLoaded}
-                onClear={() => {
-                  setShifts([]);
-                  setTimeCardFileName(null);
-                }}
-              />
-            </div>
-
-            {/* Daily Tip Entry (Full Width Table with Top Sticky Action) */}
-            <DailyTipEntry
-              restaurant={selectedRestaurant}
-              cycleDates={cycleDates}
-              dailyTipInputs={dailyTipInputs}
-              shifts={shifts}
-              onInputChange={handleDailyInputChange}
-              onBulkSet={(bulk) => setDailyTipInputs(bulk)}
-              onCalculate={handleRunCalculation}
             />
-
-            {/* Bottom Calculate Action */}
-            <div style={{ marginTop: '28px', textAlign: 'center' }}>
-              <button
-                onClick={handleRunCalculation}
-                className="btn-primary"
-                style={{
-                  padding: '16px 54px',
-                  fontSize: '1.15rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  width: '100%',
-                  maxWidth: '440px',
-                  margin: '0 auto',
-                }}
-              >
-                <Calculator size={22} />
-                <span>Calculate Tips & Open Dashboard</span>
-              </button>
-            </div>
+            {toastMessage}
           </div>
         )}
 
-        {screen === 'dashboard' && calculationResult && (
-          <CalculationDashboard
-            result={calculationResult}
-            onReset={handleReset}
-          />
-        )}
+        {/* Dynamic Screen Rendering */}
+        <main style={{ flex: 1, minHeight: 'calc(100vh - 60px)' }}>
+          {currentScreen === 'hero' && (
+            <LandingHero onStart={() => setCurrentScreen('setup')} />
+          )}
+
+          {currentScreen === 'setup' && (
+            <SetupPage
+              settings={settings}
+              onUpdateSettings={setSettings}
+              shifts={shifts}
+              onShiftsLoaded={handleShiftsLoaded}
+              dailyTipInputs={dailyTipInputs}
+              onDailyInputChange={handleDailyInputChange}
+              onHardRefresh={handleHardRefresh}
+              onRunCalculation={() => setCurrentScreen('dashboard')}
+              timeCardFileName={timeCardFileName}
+            />
+          )}
+
+          {currentScreen === 'timecards' && (
+            <TimeCardsPage
+              shifts={shifts}
+              onUpdateShifts={setShifts}
+              settings={settings}
+              onUpdateSettings={setSettings}
+            />
+          )}
+
+          {currentScreen === 'dashboard' && (
+            <CalculationDashboard
+              result={calculationResult}
+              onHardRefresh={handleHardRefresh}
+            />
+          )}
+        </main>
       </div>
-
-      {/* Clean, Discreet Footer */}
-      <footer
-        style={{
-          borderTop: '1px solid var(--border-subtle)',
-          padding: '18px 24px',
-          textAlign: 'center',
-          fontSize: '0.8rem',
-          color: 'var(--text-muted)',
-          background: 'rgba(15, 23, 42, 0.6)',
-        }}
-      >
-        <div style={{ maxWidth: '1240px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-          <div>
-            <strong>Abacus</strong> • Restaurant Tip Calculator
-          </div>
-          <div>
-            Internal Organizational Tool
-          </div>
-        </div>
-      </footer>
-    </main>
+    </div>
   );
 }

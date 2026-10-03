@@ -1,420 +1,320 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import confetti from 'canvas-confetti';
+import React, { useState } from 'react';
 import {
+  Download,
+  Calendar,
   DollarSign,
   Clock,
   TrendingUp,
-  Users,
-  FileDown,
-  RotateCcw,
-  ShieldCheck,
   Search,
+  Filter,
   CheckCircle2,
-  Calendar,
-  Eye,
-  ArrowUpRight,
+  ChevronDown,
+  ChevronUp,
+  RotateCcw,
+  Sparkles,
 } from 'lucide-react';
 import { CycleCalculationResult, EmployeeCycleSummary } from '../types/tips';
 import { generateTipCyclePDF } from '../lib/pdfGenerator';
 import { EmployeeDetailModal } from './EmployeeDetailModal';
-import { PoolGovernanceModal } from './PoolGovernanceModal';
 import { formatDisplayDate } from '../lib/parser';
 
 interface CalculationDashboardProps {
   result: CycleCalculationResult;
-  onReset: () => void;
+  onHardRefresh: () => void;
 }
 
-export function CalculationDashboard({ result, onReset }: CalculationDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'cycle' | 'dates' | 'governance'>('cycle');
-  const [selectedDate, setSelectedDate] = useState<string>(result.dailyCalculations[0]?.date || '');
-  const [searchEmployee, setSearchEmployee] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [inspectedEmployee, setInspectedEmployee] = useState<EmployeeCycleSummary | null>(null);
-  const [isGovernanceOpen, setIsGovernanceOpen] = useState(false);
+export function CalculationDashboard({ result, onHardRefresh }: CalculationDashboardProps) {
+  const [activeTab, setActiveTab] = useState<'cycle' | 'daily'>('cycle');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('ALL');
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeCycleSummary | null>(null);
+  const [expandedDate, setExpandedDate] = useState<string | null>(result.dailyCalculations[0]?.date || null);
   const [isExporting, setIsExporting] = useState(false);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  // Trigger celebration confetti on mount
-  useEffect(() => {
-    try {
-      confetti({
-        particleCount: 50,
-        spread: 60,
-        origin: { y: 0.6 },
-        colors: ['#4f46e5', '#3b82f6', '#06b6d4', '#f59e0b'],
-      });
-    } catch (e) {
-      // Ignore if SSR
-    }
-  }, []);
+  const allRoles = Array.from(new Set(result.employeeSummaries.map((e) => e.role))).filter(Boolean);
+
+  const filteredEmployees = result.employeeSummaries.filter((emp) => {
+    const matchesSearch = emp.employeeName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = roleFilter === 'ALL' || emp.role.toLowerCase() === roleFilter.toLowerCase();
+    return matchesSearch && matchesRole;
+  });
 
   const handleExportPDF = () => {
     setIsExporting(true);
     try {
       generateTipCyclePDF(result);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to generate PDF. Please try again.');
+    } catch (e) {
+      console.error('Error generating PDF:', e);
     } finally {
       setIsExporting(false);
     }
   };
 
-  // Filtered employees
-  const filteredEmployees = result.employeeSummaries.filter((e) => {
-    const matchesSearch = e.employeeName.toLowerCase().includes(searchEmployee.toLowerCase());
-    const matchesRole = roleFilter === 'all' || e.role.toLowerCase() === roleFilter.toLowerCase();
-    return matchesSearch && matchesRole;
-  });
-
-  // Selected date data
-  const currentDateCalc = result.dailyCalculations.find((d) => d.date === selectedDate) || result.dailyCalculations[0];
-
   return (
-    <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '24px 20px 80px' }}>
-      {/* Top Header Bar */}
+    <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '32px 24px' }}>
+      {/* Top Banner / Actions */}
       <div
-        className="glass-panel"
         style={{
-          padding: '20px 24px',
-          marginBottom: '24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          marginBottom: '28px',
           flexWrap: 'wrap',
           gap: '16px',
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-              {result.restaurant.name} Tip Dashboard
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1 style={{ fontSize: '1.9rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
+              Calculation Dashboard
             </h1>
             <span className="badge badge-indigo">
-              <CheckCircle2 size={12} style={{ marginRight: '4px' }} />
-              Reconciled • Differ $0.00
+              {result.distributionMethod} Distribution
             </span>
           </div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Period: <strong>{formatDisplayDate(result.startDate)}</strong> — <strong>{formatDisplayDate(result.endDate)}</strong> ({result.dailyCalculations.length} Operating Days)
-          </div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', marginTop: '4px' }}>
+            {result.restaurantName || result.poolName} | {formatDisplayDate(result.startDate)} — {formatDisplayDate(result.endDate)}
+          </p>
         </div>
 
-        {/* Header Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Hard Refresh Button */}
           <button
-            onClick={() => setIsGovernanceOpen(true)}
+            onClick={onHardRefresh}
+            type="button"
             className="btn-secondary"
-            style={{ padding: '9px 16px', fontSize: '0.85rem' }}
+            style={{ color: '#ff5f6d', borderColor: 'rgba(255, 95, 109, 0.3)' }}
           >
-            <ShieldCheck size={16} color="#60a5fa" />
-            <span>Pool Rules</span>
+            <RotateCcw size={16} />
+            <span>Hard Refresh</span>
           </button>
 
+          {/* Export PDF Button */}
           <button
             onClick={handleExportPDF}
+            type="button"
             disabled={isExporting}
             className="btn-primary"
-            style={{ padding: '9px 20px', fontSize: '0.85rem' }}
+            style={{ padding: '10px 22px' }}
           >
-            <FileDown size={16} />
+            <Download size={17} />
             <span>{isExporting ? 'Generating PDF...' : 'Export Client PDF'}</span>
-          </button>
-
-          <button
-            onClick={() => setShowResetConfirm(true)}
-            className="btn-secondary"
-            style={{ padding: '9px 16px', fontSize: '0.85rem', color: '#fb7185' }}
-          >
-            <RotateCcw size={15} />
-            <span>Reset Cycle</span>
           </button>
         </div>
       </div>
 
-      {/* 4 Executive KPI Metric Cards */}
+      {/* Executive KPI Summary Cards */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: '18px',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+          gap: '16px',
           marginBottom: '28px',
         }}
       >
-        <div className="glass-panel" style={{ padding: '22px 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Total Tips Distributed
-            </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(99, 102, 241, 0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#818cf8' }}>
-              <DollarSign size={18} />
-            </div>
+        <div className="glass-panel" style={{ padding: '20px 22px' }}>
+          <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+            Total Pool Distributed
+          </span>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#9ca3ff', marginTop: '4px' }}>
+            ${result.totalDistributed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <div style={{ fontSize: '1.9rem', fontWeight: 800, color: '#818cf8', letterSpacing: '-0.02em' }}>
-            ${result.totalTips.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            WebDash, DoorDash, Kiosk & Other tips combined
-          </div>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+            Pool Collected: ${result.totalPool.toFixed(2)}
+          </span>
         </div>
 
-        <div className="glass-panel" style={{ padding: '22px 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Total Hours Worked
-            </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa' }}>
-              <Clock size={18} />
-            </div>
+        <div className="glass-panel" style={{ padding: '20px 22px' }}>
+          <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+            Recipient Hours
+          </span>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#00e5a3', marginTop: '4px' }}>
+            {result.totalRecipientHours.toFixed(2)} hrs
           </div>
-          <div style={{ fontSize: '1.9rem', fontWeight: 800, color: '#60a5fa', letterSpacing: '-0.02em' }}>
-            {result.totalHours.toFixed(2)} hrs
-          </div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Time card total hours across all shifts
-          </div>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+            Across {result.totalEligibleEmployees} active employees
+          </span>
         </div>
 
-        <div className="glass-panel" style={{ padding: '22px 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Cycle Tip Rate ($/Hr)
-            </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(6, 182, 212, 0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22d3ee' }}>
-              <TrendingUp size={18} />
-            </div>
+        <div className="glass-panel" style={{ padding: '20px 22px' }}>
+          <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+            Average Rate / Hr
+          </span>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#c5c7e8', marginTop: '4px' }}>
+            ${result.averagePerHourValue.toFixed(2)}/hr
           </div>
-          <div style={{ fontSize: '1.9rem', fontWeight: 800, color: '#22d3ee', letterSpacing: '-0.02em' }}>
-            ${result.averagePerHourValue.toFixed(2)} / hr
-          </div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Effective payout per eligible hour worked
-          </div>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+            Uniform distribution rate
+          </span>
         </div>
 
-        <div className="glass-panel" style={{ padding: '22px 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Recipient Staff Paid
-            </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbbf24' }}>
-              <Users size={18} />
-            </div>
+        <div className="glass-panel" style={{ padding: '20px 22px' }}>
+          <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+            Total Kept Tips
+          </span>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#f6c445', marginTop: '4px' }}>
+            ${result.totalKeptTips.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <div style={{ fontSize: '1.9rem', fontWeight: 800, color: '#fbbf24', letterSpacing: '-0.02em' }}>
-            {result.totalEligibleEmployees} Staff
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+            Retained direct shift tips
+          </span>
+        </div>
+
+        <div className="glass-panel" style={{ padding: '20px 22px', border: '1.5px solid rgba(108, 99, 255, 0.45)' }}>
+          <span style={{ fontSize: '0.76rem', color: '#9ca3ff', fontWeight: 700, textTransform: 'uppercase' }}>
+            Total Overall Payout
+          </span>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#ffffff', marginTop: '4px' }}>
+            ${result.totalOverallPayout.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            {result.totalShiftsWorked} total shift entries
-          </div>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+            Kept Tips + Pool Share
+          </span>
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
+      {/* Tabs Switcher */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
         <button
           onClick={() => setActiveTab('cycle')}
+          type="button"
           style={{
-            background: activeTab === 'cycle' ? 'rgba(99, 102, 241, 0.18)' : 'transparent',
-            color: activeTab === 'cycle' ? '#818cf8' : 'var(--text-secondary)',
-            border: activeTab === 'cycle' ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid transparent',
-            borderRadius: 'var(--radius-pill)',
-            padding: '8px 18px',
-            fontSize: '0.88rem',
-            fontWeight: 700,
+            padding: '10px 20px',
+            borderRadius: 'var(--radius-sm)',
+            border: activeTab === 'cycle' ? '1.5px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
+            background: activeTab === 'cycle' ? 'rgba(93, 84, 230, 0.2)' : 'var(--bg-input)',
+            color: activeTab === 'cycle' ? '#ffffff' : 'var(--text-muted)',
+            fontWeight: 600,
+            fontSize: '0.92rem',
             cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
           }}
         >
-          <Users size={16} />
-          <span>Whole-Cycle Payouts ({result.employeeSummaries.length})</span>
+          Whole-Cycle Summary ({result.employeeSummaries.length} Employees)
         </button>
 
         <button
-          onClick={() => setActiveTab('dates')}
+          onClick={() => setActiveTab('daily')}
+          type="button"
           style={{
-            background: activeTab === 'dates' ? 'rgba(59, 130, 246, 0.18)' : 'transparent',
-            color: activeTab === 'dates' ? '#60a5fa' : 'var(--text-secondary)',
-            border: activeTab === 'dates' ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent',
-            borderRadius: 'var(--radius-pill)',
-            padding: '8px 18px',
-            fontSize: '0.88rem',
-            fontWeight: 700,
+            padding: '10px 20px',
+            borderRadius: 'var(--radius-sm)',
+            border: activeTab === 'daily' ? '1.5px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
+            background: activeTab === 'daily' ? 'rgba(93, 84, 230, 0.2)' : 'var(--bg-input)',
+            color: activeTab === 'daily' ? '#ffffff' : 'var(--text-muted)',
+            fontWeight: 600,
+            fontSize: '0.92rem',
             cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
           }}
         >
-          <Calendar size={16} />
-          <span>Date-by-Date Detail ({result.dailyCalculations.length} Days)</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('governance')}
-          style={{
-            background: activeTab === 'governance' ? 'rgba(139, 92, 246, 0.18)' : 'transparent',
-            color: activeTab === 'governance' ? '#c084fc' : 'var(--text-secondary)',
-            border: activeTab === 'governance' ? '1px solid rgba(139, 92, 246, 0.4)' : '1px solid transparent',
-            borderRadius: 'var(--radius-pill)',
-            padding: '8px 18px',
-            fontSize: '0.88rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          <ShieldCheck size={16} />
-          <span>Pool Governance & Audit</span>
+          Date-by-Date Breakdown ({result.dailyCalculations.length} Days)
         </button>
       </div>
 
-      {/* TAB 1: Whole-Cycle Payouts Table */}
+      {/* TAB 1: WHOLE-CYCLE SUMMARY */}
       {activeTab === 'cycle' && (
         <div className="glass-panel" style={{ padding: '24px' }}>
-          {/* Table Header Filter Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, maxWidth: '400px' }}>
-              <div style={{ position: 'relative', width: '100%' }}>
-                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input
-                  type="text"
-                  placeholder="Search employee name..."
-                  value={searchEmployee}
-                  onChange={(e) => setSearchEmployee(e.target.value)}
-                  className="input-field"
-                  style={{ paddingLeft: '36px' }}
-                />
-              </div>
+          {/* Search & Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+              <Search
+                size={16}
+                style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}
+              />
+              <input
+                type="text"
+                className="input-clean"
+                placeholder="Search employee by name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ paddingLeft: '38px' }}
+              />
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Role Filter:</span>
-              {['all', 'cashier', 'server'].map((rf) => (
-                <button
-                  key={rf}
-                  onClick={() => setRoleFilter(rf)}
-                  style={{
-                    background: roleFilter === rf ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid var(--border-subtle)',
-                    color: roleFilter === rf ? '#ffffff' : 'var(--text-muted)',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                    padding: '5px 12px',
-                    borderRadius: 'var(--radius-pill)',
-                    cursor: 'pointer',
-                    textTransform: 'capitalize',
-                  }}
-                >
-                  {rf}
-                </button>
-              ))}
+              <Filter size={16} color="var(--text-muted)" />
+              <select
+                className="input-clean"
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                style={{ minWidth: '150px' }}
+              >
+                <option value="ALL" style={{ background: '#151336' }}>All Roles</option>
+                {allRoles.map((r) => (
+                  <option key={r} value={r} style={{ background: '#151336' }}>
+                    {r}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          {/* Master Employee Table */}
-          <div style={{ overflowX: 'auto' }}>
-            <table className="modern-table">
+          {/* Table */}
+          <div className="data-table-container">
+            <table className="data-table">
               <thead>
                 <tr>
+                  <th>#</th>
                   <th>Employee Name</th>
                   <th>Role</th>
-                  <th style={{ textAlign: 'center' }}>Shifts</th>
                   <th style={{ textAlign: 'right' }}>Total Hours</th>
-                  <th style={{ textAlign: 'right' }}>Avg Tip / Hr</th>
+                  <th style={{ textAlign: 'right' }}>Total Net Sales</th>
+                  <th style={{ textAlign: 'right' }}>Kept Tips</th>
                   <th style={{ textAlign: 'right' }}>Pool Share</th>
-                  <th style={{ textAlign: 'right' }}>Total Tip Payout</th>
-                  <th style={{ textAlign: 'center' }}>Ledger</th>
+                  <th style={{ textAlign: 'right' }}>Total Payout</th>
+                  <th style={{ textAlign: 'right' }}>Rate ($/hr)</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredEmployees.map((emp) => {
-                  const poolShare = ((emp.totalTips / result.totalTips) * 100).toFixed(1);
-                  return (
-                    <tr key={emp.employeeName}>
-                      <td>
-                        <button
-                          onClick={() => setInspectedEmployee(emp)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--text-primary)',
-                            fontWeight: 700,
-                            fontSize: '0.92rem',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                          }}
-                        >
-                          <span>{emp.employeeName}</span>
-                          <ArrowUpRight size={13} color="#64748b" />
-                        </button>
-                      </td>
-                      <td>
-                        <span className={`badge ${emp.role.toLowerCase() === 'server' ? 'badge-blue' : 'badge-indigo'}`}>
-                          {emp.role}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'center', fontWeight: 600 }}>{emp.shiftCount}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 600, color: '#60a5fa' }}>
-                        {emp.totalHours.toFixed(2)} hrs
-                      </td>
-                      <td style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>
-                        ${emp.averagePerHourTip.toFixed(2)} / hr
-                      </td>
-                      <td style={{ textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                        {poolShare}%
-                      </td>
-                      <td style={{ textAlign: 'right', fontWeight: 800, fontSize: '1.05rem', color: '#818cf8' }}>
-                        ${emp.totalTips.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button
-                          onClick={() => setInspectedEmployee(emp)}
-                          className="btn-secondary"
-                          style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                        >
-                          <Eye size={12} />
-                          <span>View Days</span>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {filteredEmployees.map((emp, idx) => (
+                  <tr
+                    key={emp.employeeName}
+                    onClick={() => setSelectedEmployee(emp)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <td style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>{idx + 1}</td>
+                    <td style={{ fontWeight: 600, color: '#ffffff' }}>{emp.employeeName}</td>
+                    <td>
+                      <span className="badge badge-indigo">{emp.role}</span>
+                    </td>
+                    <td style={{ textAlign: 'right', fontWeight: 600 }}>{emp.totalHours.toFixed(2)}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>
+                      ${emp.totalNetSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td style={{ textAlign: 'right', color: '#f6c445' }}>
+                      ${emp.totalKeptTips.toFixed(2)}
+                    </td>
+                    <td style={{ textAlign: 'right', color: '#00e5a3', fontWeight: 600 }}>
+                      ${emp.totalPoolReceived.toFixed(2)}
+                    </td>
+                    <td style={{ textAlign: 'right', color: '#ffffff', fontWeight: 800 }}>
+                      ${emp.totalPayout.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td style={{ textAlign: 'right', color: '#c5c7e8' }}>
+                      ${emp.averagePerHourTip.toFixed(2)}/hr
+                    </td>
+                  </tr>
+                ))}
               </tbody>
               <tfoot>
-                <tr style={{ background: 'rgba(15, 23, 42, 0.95)', borderTop: '2px solid rgba(99, 102, 241, 0.3)' }}>
-                  <td style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '1rem' }}>
-                    TOTALS ({result.totalEligibleEmployees} EMPLOYEES)
+                <tr style={{ background: '#19173f', fontWeight: 800 }}>
+                  <td colSpan={3} style={{ color: '#ffffff' }}>TOTALS</td>
+                  <td style={{ textAlign: 'right' }}>{result.totalRecipientHours.toFixed(2)}</td>
+                  <td style={{ textAlign: 'right' }}>
+                    ${result.employeeSummaries.reduce((s, e) => s + e.totalNetSales, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
-                  <td>
-                    <span className="badge badge-indigo">Equal Pool</span>
+                  <td style={{ textAlign: 'right', color: '#f6c445' }}>
+                    ${result.totalKeptTips.toFixed(2)}
                   </td>
-                  <td style={{ textAlign: 'center', fontWeight: 800 }}>{result.totalShiftsWorked}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#60a5fa', fontSize: '1.05rem' }}>
-                    {result.totalHours.toFixed(2)} hrs
+                  <td style={{ textAlign: 'right', color: '#00e5a3' }}>
+                    ${result.totalDistributed.toFixed(2)}
                   </td>
-                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#22d3ee' }}>
-                    ${result.averagePerHourValue.toFixed(2)} / hr
+                  <td style={{ textAlign: 'right', color: '#ffffff' }}>
+                    ${result.totalOverallPayout.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
-                  <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text-muted)' }}>100.0%</td>
-                  <td style={{ textAlign: 'right', fontWeight: 800, color: '#818cf8', fontSize: '1.2rem' }}>
-                    ${result.totalTips.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </td>
-                  <td style={{ textAlign: 'center', color: '#818cf8', fontWeight: 700, fontSize: '0.75rem' }}>
-                    Verified
+                  <td style={{ textAlign: 'right' }}>
+                    ${result.averagePerHourValue.toFixed(2)}/hr
                   </td>
                 </tr>
               </tfoot>
@@ -423,338 +323,131 @@ export function CalculationDashboard({ result, onReset }: CalculationDashboardPr
         </div>
       )}
 
-      {/* TAB 2: Date-by-Date Detail */}
-      {activeTab === 'dates' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-          {/* Date Selector List */}
-          <div className="glass-panel" style={{ padding: '20px', maxHeight: '680px', overflowY: 'auto' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '14px' }}>Cycle Operating Days</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {result.dailyCalculations.map((d) => {
-                const isSelected = d.date === currentDateCalc.date;
-                return (
-                  <button
-                    key={d.date}
-                    onClick={() => setSelectedDate(d.date)}
-                    style={{
-                      background: isSelected ? 'rgba(99, 102, 241, 0.18)' : 'rgba(255, 255, 255, 0.02)',
-                      border: isSelected ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid var(--border-subtle)',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '12px 14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
+      {/* TAB 2: DATE-BY-DATE BREAKDOWN */}
+      {activeTab === 'daily' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {result.dailyCalculations.map((day) => {
+            const isExpanded = expandedDate === day.date;
+
+            return (
+              <div
+                key={day.date}
+                className="glass-panel"
+                style={{ padding: '20px 24px', transition: 'all 0.2s ease' }}
+              >
+                {/* Header row */}
+                <div
+                  onClick={() => setExpandedDate(isExpanded ? null : day.date)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    flexWrap: 'wrap',
+                    gap: '12px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>
+                      {day.displayDate}
+                    </div>
+                    <span className="badge badge-indigo">{day.dayOfWeek}</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      {day.employees.length} Staff Worked
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: isSelected ? '#818cf8' : 'var(--text-primary)' }}>
-                        {d.displayDate}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {d.dayOfWeek} • {d.employees.length} staff on duty
-                      </div>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block' }}>Pool Collected</span>
+                      <span style={{ fontSize: '1rem', fontWeight: 700, color: '#00e5a3' }}>
+                        ${day.totalPool.toFixed(2)}
+                      </span>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#818cf8' }}>
-                        ${d.totalTips.toFixed(2)}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#60a5fa' }}>
-                        ${d.perHourValue.toFixed(2)}/hr
-                      </div>
+
+                    <div>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block' }}>Recipient Hours</span>
+                      <span style={{ fontSize: '1rem', fontWeight: 700, color: '#9ca3ff' }}>
+                        {day.totalRecipientHours.toFixed(2)} hrs
+                      </span>
                     </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
 
-          {/* Active Date Card & Detail Table */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', gridColumn: 'span 2' }}>
-            <div className="glass-panel" style={{ padding: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                      {currentDateCalc.displayDate}
-                    </h2>
-                    <span className="badge badge-blue">{currentDateCalc.dayOfWeek}</span>
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    Daily Business Day Tip Pool & Employee Allocations
+                    <div>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block' }}>Hourly Rate</span>
+                      <span style={{ fontSize: '1rem', fontWeight: 700, color: '#ffffff' }}>
+                        ${day.perHourValue.toFixed(2)}/hr
+                      </span>
+                    </div>
+
+                    {isExpanded ? <ChevronUp size={20} color="var(--text-muted)" /> : <ChevronDown size={20} color="var(--text-muted)" />}
                   </div>
                 </div>
 
-                <div className="badge badge-indigo" style={{ fontSize: '0.85rem', padding: '6px 14px' }}>
-                  Daily Pool: ${currentDateCalc.totalTips.toFixed(2)}
-                </div>
-              </div>
+                {/* Expanded content */}
+                {isExpanded && (
+                  <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
+                    {/* Sources breakdown badge row */}
+                    <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                      <span className="badge badge-indigo">Online: ${day.tipSources.webDash.toFixed(2)}</span>
+                      <span className="badge badge-teal">Kiosk: ${day.tipSources.kiosk.toFixed(2)}</span>
+                      <span className="badge badge-gold">3PO: ${day.tipSources.doorDash.toFixed(2)}</span>
+                      {day.tipSources.other > 0 && (
+                        <span className="badge badge-indigo">Other: ${day.tipSources.other.toFixed(2)}</span>
+                      )}
+                    </div>
 
-              {/* Day Metrics */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginBottom: '20px' }}>
-                <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>WEBDASH TIPS</div>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#f8fafc', marginTop: '3px' }}>
-                    ${currentDateCalc.tipSources.webDash.toFixed(2)}
+                    {/* Table of employees for this day */}
+                    <div className="data-table-container">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Employee Name</th>
+                            <th>Role</th>
+                            <th style={{ textAlign: 'right' }}>Hours</th>
+                            <th style={{ textAlign: 'right' }}>Net Sales</th>
+                            <th style={{ textAlign: 'right' }}>Kept Tips</th>
+                            <th style={{ textAlign: 'right' }}>Pool Share</th>
+                            <th style={{ textAlign: 'right' }}>Total Payout</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {day.employees.map((emp) => (
+                            <tr key={emp.employeeName}>
+                              <td style={{ fontWeight: 600, color: '#ffffff' }}>{emp.employeeName}</td>
+                              <td>{emp.role}</td>
+                              <td style={{ textAlign: 'right', fontWeight: 600 }}>{emp.hours.toFixed(2)}</td>
+                              <td style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>
+                                ${(emp.netSale || 0).toFixed(2)}
+                              </td>
+                              <td style={{ textAlign: 'right', color: '#f6c445' }}>
+                                ${emp.keptTips.toFixed(2)}
+                              </td>
+                              <td style={{ textAlign: 'right', color: '#00e5a3', fontWeight: 600 }}>
+                                ${emp.poolShare.toFixed(2)}
+                              </td>
+                              <td style={{ textAlign: 'right', color: '#ffffff', fontWeight: 700 }}>
+                                ${emp.totalPayout.toFixed(2)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
-
-                <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>DOORDASH</div>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#f8fafc', marginTop: '3px' }}>
-                    ${currentDateCalc.tipSources.doorDash.toFixed(2)}
-                  </div>
-                </div>
-
-                <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>KIOSK TIPS</div>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#f8fafc', marginTop: '3px' }}>
-                    ${currentDateCalc.tipSources.kiosk.toFixed(2)}
-                  </div>
-                </div>
-
-                <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>TOTAL HOURS</div>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#60a5fa', marginTop: '3px' }}>
-                    {currentDateCalc.totalHours.toFixed(2)} hrs
-                  </div>
-                </div>
-
-                <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>HOURLY RATE</div>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#818cf8', marginTop: '3px' }}>
-                    ${currentDateCalc.perHourValue.toFixed(2)} / hr
-                  </div>
-                </div>
+                )}
               </div>
-
-              {/* Day Employees Sub-table */}
-              <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '10px', color: 'var(--text-secondary)' }}>
-                Staff on Shift & Tip Allocation ({currentDateCalc.employees.length} Staff)
-              </h4>
-
-              <div style={{ overflowX: 'auto', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)' }}>
-                <table className="modern-table">
-                  <thead>
-                    <tr>
-                      <th>Employee</th>
-                      <th>Role</th>
-                      <th style={{ textAlign: 'right' }}>Hours Worked</th>
-                      <th style={{ textAlign: 'right' }}>Tip Rate</th>
-                      <th style={{ textAlign: 'right' }}>Pool Share</th>
-                      <th style={{ textAlign: 'right' }}>Tips Earned</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentDateCalc.employees.map((e) => (
-                      <tr key={e.employeeName}>
-                        <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{e.employeeName}</td>
-                        <td>
-                          <span className={`badge ${e.role.toLowerCase() === 'server' ? 'badge-blue' : 'badge-indigo'}`}>
-                            {e.role}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: 'right', fontWeight: 600, color: '#60a5fa' }}>
-                          {e.hours.toFixed(2)} hrs
-                        </td>
-                        <td style={{ textAlign: 'right' }}>${e.dailyRate.toFixed(2)}/hr</td>
-                        <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>
-                          {e.percentageOfDailyPool.toFixed(1)}%
-                        </td>
-                        <td style={{ textAlign: 'right', fontWeight: 800, color: '#818cf8' }}>
-                          ${e.tipsEarned.toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr style={{ background: 'rgba(15, 23, 42, 0.9)' }}>
-                      <td style={{ fontWeight: 800, color: 'var(--text-primary)' }}>DAY TOTALS</td>
-                      <td></td>
-                      <td style={{ textAlign: 'right', fontWeight: 800, color: '#60a5fa' }}>{currentDateCalc.totalHours.toFixed(2)} hrs</td>
-                      <td style={{ textAlign: 'right', fontWeight: 800 }}>${currentDateCalc.perHourValue.toFixed(2)}/hr</td>
-                      <td style={{ textAlign: 'right', fontWeight: 800 }}>100.0%</td>
-                      <td style={{ textAlign: 'right', fontWeight: 800, color: '#818cf8' }}>${currentDateCalc.totalTips.toFixed(2)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: Governance & Audit */}
-      {activeTab === 'governance' && (
-        <div className="glass-panel" style={{ padding: '28px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-            <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                System Audit & Reconciliation
-              </h2>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                Comparing cycle inputs, hours integrity, and mathematical balance
-              </p>
-            </div>
-            <div className="badge badge-indigo" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-              Difference: ${result.reconciliation.difference.toFixed(2)}
-            </div>
-          </div>
-
-          {/* Audit Cards Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '28px' }}>
-            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#60a5fa', marginBottom: '6px' }}>
-                TOTAL INPUT TIPS COLLECTED
-              </div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f8fafc' }}>
-                ${result.reconciliation.totalInputTips.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                Sum of WebDash, DoorDash, Kiosk & Other daily entries across {result.dailyCalculations.length} days
-              </div>
-            </div>
-
-            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#818cf8', marginBottom: '6px' }}>
-                TOTAL EMPLOYEE PAYOUTS
-              </div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#818cf8' }}>
-                ${result.reconciliation.totalDistributedTips.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                Sum of individual payouts allocated to {result.totalEligibleEmployees} staff
-              </div>
-            </div>
-
-            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fbbf24', marginBottom: '6px' }}>
-                DIFFERENCE AUDIT
-              </div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#818cf8' }}>
-                $0.00
-              </div>
-              <div style={{ fontSize: '0.78rem', color: '#818cf8', marginTop: '4px', fontWeight: 600 }}>
-                ✓ Perfectly Balanced
-              </div>
-            </div>
-          </div>
-
-          {/* Excluded Roles callout */}
-          {result.excludedShiftsCount > 0 && (
-            <div
-              style={{
-                padding: '16px 20px',
-                background: 'rgba(245, 158, 11, 0.08)',
-                border: '1px solid rgba(245, 158, 11, 0.25)',
-                borderRadius: 'var(--radius-md)',
-                marginBottom: '24px',
-              }}
-            >
-              <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fbbf24', marginBottom: '6px' }}>
-                Excluded Roles Policy ({result.excludedShiftsCount} shifts filtered out)
-              </h4>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                Only roles designated as <strong>Recipients (Cashier, Server)</strong> are included in tip payouts. Roles such as <strong>{result.excludedRoles.join(', ')}</strong> were excluded from recipient calculations.
-              </p>
-            </div>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-            <button
-              onClick={() => setIsGovernanceOpen(true)}
-              className="btn-secondary"
-              style={{ padding: '8px 18px', fontSize: '0.85rem' }}
-            >
-              <ShieldCheck size={16} />
-              <span>View Pool Configuration Details</span>
-            </button>
-          </div>
+            );
+          })}
         </div>
       )}
 
       {/* Employee Detail Modal */}
-      <EmployeeDetailModal
-        employee={inspectedEmployee}
-        onClose={() => setInspectedEmployee(null)}
-      />
-
-      {/* Pool Governance Modal */}
-      <PoolGovernanceModal
-        restaurant={result.restaurant}
-        isOpen={isGovernanceOpen}
-        onClose={() => setIsGovernanceOpen(false)}
-      />
-
-      {/* Reset Confirmation Modal */}
-      {showResetConfirm && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.75)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 99999,
-            padding: '20px',
-          }}
-        >
-          <div
-            className="glass-panel"
-            style={{
-              maxWidth: '460px',
-              width: '100%',
-              padding: '28px',
-              border: '1px solid rgba(244, 63, 94, 0.3)',
-              textAlign: 'center',
-            }}
-          >
-            <div
-              style={{
-                width: '52px',
-                height: '52px',
-                borderRadius: '50%',
-                background: 'rgba(244, 63, 94, 0.15)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fb7185',
-                marginBottom: '16px',
-              }}
-            >
-              <RotateCcw size={26} />
-            </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '8px', color: 'var(--text-primary)' }}>
-              Reset Abacus Session?
-            </h3>
-            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '24px' }}>
-              This will clear the current calculation session, uploaded time card data, and daily tip inputs.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
-              <button
-                onClick={() => setShowResetConfirm(false)}
-                className="btn-secondary"
-                style={{ padding: '10px 20px' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowResetConfirm(false);
-                  onReset();
-                }}
-                className="btn-danger"
-                style={{ padding: '10px 24px', fontWeight: 700 }}
-              >
-                Yes, Reset Abacus
-              </button>
-            </div>
-          </div>
-        </div>
+      {selectedEmployee && (
+        <EmployeeDetailModal
+          employee={selectedEmployee}
+          onClose={() => setSelectedEmployee(null)}
+        />
       )}
     </div>
   );
