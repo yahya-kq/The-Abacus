@@ -2,15 +2,12 @@
 
 import React from 'react';
 import {
-  Sparkles,
   SlidersHorizontal,
   Clock,
   BarChart3,
   RotateCcw,
-  FileSpreadsheet,
   ChevronLeft,
   ChevronRight,
-  Coffee,
 } from 'lucide-react';
 
 export type NavScreen = 'hero' | 'setup' | 'timecards' | 'dashboard';
@@ -21,8 +18,6 @@ interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   onHardRefresh: () => void;
-  onLoadTestData: () => void;
-  onLoadMissionHillData: () => void;
 }
 
 export function Sidebar({
@@ -31,33 +26,25 @@ export function Sidebar({
   isCollapsed,
   onToggleCollapse,
   onHardRefresh,
-  onLoadTestData,
-  onLoadMissionHillData,
 }: SidebarProps) {
   const navItems = [
-    {
-      id: 'hero' as NavScreen,
-      label: 'Welcome & Overview',
-      icon: Sparkles,
-      badge: null,
-    },
     {
       id: 'setup' as NavScreen,
       label: 'Tip Pool Setup',
       icon: SlidersHorizontal,
-      badge: 'Rules',
+      badge: null,
     },
     {
       id: 'timecards' as NavScreen,
       label: 'Time Cards',
       icon: Clock,
-      badge: 'Shifts',
+      badge: null,
     },
     {
       id: 'dashboard' as NavScreen,
-      label: 'Calculation Dashboard',
+      label: '📊 Calculation Dashboard',
       icon: BarChart3,
-      badge: 'Live',
+      badge: null,
     },
   ];
 
@@ -77,7 +64,7 @@ export function Sidebar({
         zIndex: 50,
       }}
     >
-      {/* Brand Header */}
+      {/* Brand Header: Clickable to return to Landing Page */}
       <div
         style={{
           padding: isCollapsed ? '24px 16px' : '24px 20px',
@@ -88,7 +75,16 @@ export function Sidebar({
         }}
       >
         {!isCollapsed && (
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div
+            onClick={() => onNavigate('hero')}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              cursor: 'pointer',
+              userSelect: 'none',
+            }}
+            title="Return to Landing Page"
+          >
             <span
               style={{
                 fontSize: '1.4rem',
@@ -203,27 +199,12 @@ export function Sidebar({
                   {item.label}
                 </span>
               )}
-              {!isCollapsed && item.badge && (
-                <span
-                  style={{
-                    fontSize: '0.68rem',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    background: isActive ? 'rgba(108, 99, 255, 0.4)' : 'rgba(139, 142, 222, 0.14)',
-                    color: isActive ? '#ffffff' : '#8e91be',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {item.badge}
-                </span>
-              )}
             </button>
           );
         })}
       </nav>
 
-      {/* Quick Action Footer */}
+      {/* Quick Action Footer: Hard Refresh Only */}
       <div
         style={{
           padding: '16px 12px',
@@ -233,79 +214,10 @@ export function Sidebar({
           gap: '8px',
         }}
       >
-        {/* Load Mission Hill Data */}
-        <button
-          onClick={onLoadMissionHillData}
-          type="button"
-          title={isCollapsed ? 'Load Mission Hill Sample Dataset' : undefined}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: isCollapsed ? '10px' : '10px 12px',
-            justifyContent: isCollapsed ? 'center' : 'flex-start',
-            borderRadius: '8px',
-            background: 'rgba(93, 84, 230, 0.1)',
-            border: '1px solid rgba(108, 99, 255, 0.3)',
-            color: '#a49eff',
-            fontSize: '0.84rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            width: '100%',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(93, 84, 230, 0.2)';
-            e.currentTarget.style.borderColor = '#6c63ff';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(93, 84, 230, 0.1)';
-            e.currentTarget.style.borderColor = 'rgba(108, 99, 255, 0.3)';
-          }}
-        >
-          <Coffee size={16} />
-          {!isCollapsed && <span>Load Mission Hill Data</span>}
-        </button>
-
-        {/* Load Test-1 Data */}
-        <button
-          onClick={onLoadTestData}
-          type="button"
-          title={isCollapsed ? 'Load Test-1 Sample Dataset' : undefined}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: isCollapsed ? '10px' : '10px 12px',
-            justifyContent: isCollapsed ? 'center' : 'flex-start',
-            borderRadius: '8px',
-            background: 'rgba(0, 210, 180, 0.08)',
-            border: '1px solid rgba(0, 210, 180, 0.25)',
-            color: '#00e5a3',
-            fontSize: '0.84rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            width: '100%',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(0, 210, 180, 0.16)';
-            e.currentTarget.style.borderColor = '#00e5a3';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(0, 210, 180, 0.08)';
-            e.currentTarget.style.borderColor = 'rgba(0, 210, 180, 0.25)';
-          }}
-        >
-          <FileSpreadsheet size={16} />
-          {!isCollapsed && <span>Load Test-1 Data</span>}
-        </button>
-
-        {/* Hard Refresh Button */}
         <button
           onClick={onHardRefresh}
           type="button"
-          title={isCollapsed ? 'Hard Refresh (Clear All Memory)' : undefined}
+          title={isCollapsed ? 'Hard Refresh (Clear All Temporary Memory)' : undefined}
           style={{
             display: 'flex',
             alignItems: 'center',

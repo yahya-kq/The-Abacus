@@ -22,15 +22,15 @@ export default function Home() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Pool Settings state (Clean, no assumptions by default per user request)
+  // Pool Settings state (Clean slate: user sets up restaurant, cycle dates, and rules)
   const [settings, setSettings] = useState<TipPoolSettings>({
     poolName: '',
     restaurantName: '',
     dateMode: 'range',
-    startDate: '2026-09-07',
-    endDate: '2026-09-20',
+    startDate: '',
+    endDate: '',
     timePeriod: 'all_day',
-    splitSetup: 'percentage_of_tips',
+    splitSetup: '',
     contributors: [],
     sources: {
       kiosk: { enabled: false, percent: 100 },
@@ -157,10 +157,10 @@ export default function Home() {
       poolName: '',
       restaurantName: '',
       dateMode: 'range',
-      startDate: '2026-09-07',
-      endDate: '2026-09-20',
+      startDate: '',
+      endDate: '',
       timePeriod: 'all_day',
-      splitSetup: 'percentage_of_tips',
+      splitSetup: '',
       contributors: [],
       sources: {
         kiosk: { enabled: false, percent: 100 },
@@ -276,72 +276,82 @@ export default function Home() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-primary)' }}>
-      {/* Collapsible Sidebar */}
-      <Sidebar
-        currentScreen={currentScreen}
-        onNavigate={(screen) => setCurrentScreen(screen)}
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        onHardRefresh={handleHardRefresh}
-        onLoadTestData={handleLoadTestData}
-        onLoadMissionHillData={handleLoadMissionHillData}
-      />
+      {/* Collapsible Sidebar: Only rendered in workspace views */}
+      {currentScreen !== 'hero' && (
+        <Sidebar
+          currentScreen={currentScreen}
+          onNavigate={(screen) => setCurrentScreen(screen)}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          onHardRefresh={handleHardRefresh}
+        />
+      )}
 
       {/* Main Content Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        {/* Clean Top Navigation Bar (No marketing links, simple ABACUS text) */}
-        <header
-          style={{
-            height: '60px',
-            borderBottom: '1px solid rgba(139, 142, 222, 0.14)',
-            background: 'rgba(21, 19, 54, 0.75)',
-            backdropFilter: 'blur(16px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 28px',
-            position: 'sticky',
-            top: 0,
-            zIndex: 40,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <span
-              style={{
-                fontSize: '1.25rem',
-                fontWeight: 800,
-                letterSpacing: '-0.02em',
-                color: '#ffffff',
-              }}
-            >
-              ABACUS
-            </span>
-            <span style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>|</span>
-            <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-              {currentScreen === 'hero' && 'Welcome'}
-              {currentScreen === 'setup' && 'Tip Pool Configuration'}
-              {currentScreen === 'timecards' && 'Time Cards Ledger'}
-              {currentScreen === 'dashboard' && 'Calculation Dashboard'}
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {timeCardFileName && (
-              <span
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, width: '100%' }}>
+        {/* Clean Top Navigation Bar: Only rendered in workspace views */}
+        {currentScreen !== 'hero' && (
+          <header
+            style={{
+              height: '60px',
+              borderBottom: '1px solid rgba(139, 142, 222, 0.14)',
+              background: 'rgba(21, 19, 54, 0.75)',
+              backdropFilter: 'blur(16px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 28px',
+              position: 'sticky',
+              top: 0,
+              zIndex: 40,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <button
+                onClick={() => setCurrentScreen('hero')}
+                type="button"
                 style={{
-                  fontSize: '0.8rem',
-                  padding: '4px 10px',
-                  borderRadius: 'var(--radius-pill)',
-                  background: 'rgba(108, 99, 255, 0.15)',
-                  border: '1px solid rgba(108, 99, 255, 0.3)',
-                  color: '#9ca3ff',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  fontSize: '1.25rem',
+                  fontWeight: 800,
+                  letterSpacing: '-0.02em',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
                 }}
+                title="Return to Landing Page"
               >
-                {timeCardFileName}
+                ABACUS
+              </button>
+              <span style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>|</span>
+              <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+                {currentScreen === 'setup' && 'Tip Pool Configuration'}
+                {currentScreen === 'timecards' && 'Time Cards Ledger'}
+                {currentScreen === 'dashboard' && 'Calculation Dashboard'}
               </span>
-            )}
-          </div>
-        </header>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              {timeCardFileName && (
+                <span
+                  style={{
+                    fontSize: '0.8rem',
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-pill)',
+                    background: 'rgba(108, 99, 255, 0.15)',
+                    border: '1px solid rgba(108, 99, 255, 0.3)',
+                    color: '#9ca3ff',
+                  }}
+                >
+                  {timeCardFileName}
+                </span>
+              )}
+            </div>
+          </header>
+        )}
 
         {/* Toast Notification */}
         {toastMessage && (
@@ -378,7 +388,7 @@ export default function Home() {
         )}
 
         {/* Dynamic Screen Rendering */}
-        <main style={{ flex: 1, minHeight: 'calc(100vh - 60px)' }}>
+        <main style={{ flex: 1, minHeight: currentScreen === 'hero' ? '100vh' : 'calc(100vh - 60px)' }}>
           {currentScreen === 'hero' && (
             <LandingHero onStart={() => setCurrentScreen('setup')} />
           )}

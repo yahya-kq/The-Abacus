@@ -75,7 +75,7 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
             </span>
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', marginTop: '4px' }}>
-            {result.restaurantName || result.poolName} | {formatDisplayDate(result.startDate)} — {formatDisplayDate(result.endDate)}
+            {result.restaurantName || 'Active Tip Pool'}{result.startDate && result.endDate ? ` | ${formatDisplayDate(result.startDate)} — ${formatDisplayDate(result.endDate)}` : ''}
           </p>
         </div>
 
@@ -267,6 +267,18 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
                 </tr>
               </thead>
               <tbody>
+                {filteredEmployees.length === 0 && (
+                  <tr>
+                    <td colSpan={9} style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>
+                        No Calculation Data Available
+                      </div>
+                      <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)' }}>
+                        Configure your Tip Pool Setup and upload timecards to generate client-ready allocation results.
+                      </p>
+                    </td>
+                  </tr>
+                )}
                 {filteredEmployees.map((emp, idx) => (
                   <tr
                     key={emp.employeeName}

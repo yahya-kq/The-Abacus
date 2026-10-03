@@ -15,7 +15,6 @@ import {
   Clock,
   Sparkles,
   ArrowRight,
-  Info,
 } from 'lucide-react';
 import {
   TipPoolSettings,
@@ -245,9 +244,8 @@ export function SetupPage({
                 letterSpacing: '-0.02em',
               }}
             >
-              Create Tip Pool
+              Tip Pool Setup
             </h1>
-            <span className="badge badge-indigo">Aio Config Engine</span>
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', marginTop: '4px' }}>
             Configure contributions, distribution models, and recipient rules.
@@ -280,26 +278,13 @@ export function SetupPage({
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        {/* SECTION 1: General Info */}
+        {/* SECTION 1: Tip Cycle & Restaurant Info */}
         <div className="glass-panel" style={{ padding: '24px' }}>
           <h2 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#ffffff', marginBottom: '16px' }}>
-            General Info
+            Tip Cycle Setup
           </h2>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                Pool Name
-              </label>
-              <input
-                type="text"
-                className="input-clean"
-                value={settings.poolName}
-                placeholder="e.g. Mission Hill Tip Pool"
-                onChange={(e) => onUpdateSettings({ ...settings, poolName: e.target.value })}
-              />
-            </div>
-
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
                 Restaurant Name
@@ -308,116 +293,39 @@ export function SetupPage({
                 type="text"
                 className="input-clean"
                 value={settings.restaurantName}
-                placeholder="e.g. Mission Hill"
+                placeholder="Enter restaurant name..."
                 onChange={(e) => onUpdateSettings({ ...settings, restaurantName: e.target.value })}
               />
             </div>
-          </div>
 
-          {/* Dates Selection */}
-          <div style={{ marginTop: '20px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '10px' }}>
-              Dates
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
-              {/* Single Effective Date */}
-              <div
-                style={{
-                  padding: '16px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: settings.dateMode === 'single' ? '1.5px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
-                  background: settings.dateMode === 'single' ? 'rgba(93, 84, 230, 0.08)' : 'var(--bg-input)',
-                  cursor: 'pointer',
-                }}
-                onClick={() => onUpdateSettings({ ...settings, dateMode: 'single' })}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  <input
-                    type="radio"
-                    checked={settings.dateMode === 'single'}
-                    onChange={() => onUpdateSettings({ ...settings, dateMode: 'single' })}
-                  />
-                  <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#ffffff' }}>Single Effective Date</span>
-                </div>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
-                  Starts on chosen date and runs until changed.
-                </p>
-                <input
-                  type="date"
-                  className="input-clean"
-                  value={settings.startDate}
-                  onChange={(e) => onUpdateSettings({ ...settings, startDate: e.target.value, endDate: e.target.value })}
-                  disabled={settings.dateMode !== 'single'}
-                />
-              </div>
-
-              {/* Date Range */}
-              <div
-                style={{
-                  padding: '16px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: settings.dateMode === 'range' ? '1.5px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
-                  background: settings.dateMode === 'range' ? 'rgba(93, 84, 230, 0.08)' : 'var(--bg-input)',
-                  cursor: 'pointer',
-                }}
-                onClick={() => onUpdateSettings({ ...settings, dateMode: 'range' })}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  <input
-                    type="radio"
-                    checked={settings.dateMode === 'range'}
-                    onChange={() => onUpdateSettings({ ...settings, dateMode: 'range' })}
-                  />
-                  <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#ffffff' }}>Date Range</span>
-                </div>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
-                  Active between start and end date.
-                </p>
-                <div style={{ display: 'flex', gap: '8px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                Tip Cycle Period
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                    Start Date
+                  </span>
                   <input
                     type="date"
                     className="input-clean"
                     value={settings.startDate}
                     onChange={(e) => onUpdateSettings({ ...settings, startDate: e.target.value })}
-                    disabled={settings.dateMode !== 'range'}
                   />
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                    End Date
+                  </span>
                   <input
                     type="date"
                     className="input-clean"
                     value={settings.endDate}
                     onChange={(e) => onUpdateSettings({ ...settings, endDate: e.target.value })}
-                    disabled={settings.dateMode !== 'range'}
                   />
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Time period */}
-          <div style={{ marginTop: '20px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-              Time period
-            </label>
-            <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
-                <input
-                  type="radio"
-                  name="timePeriod"
-                  checked={settings.timePeriod === 'all_day'}
-                  onChange={() => onUpdateSettings({ ...settings, timePeriod: 'all_day' })}
-                />
-                <span>All day</span>
-              </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
-                <input
-                  type="radio"
-                  name="timePeriod"
-                  checked={settings.timePeriod === 'specific'}
-                  onChange={() => onUpdateSettings({ ...settings, timePeriod: 'specific' })}
-                />
-                <span>Specific Day & Time</span>
-              </label>
             </div>
           </div>
         </div>
@@ -906,73 +814,6 @@ export function SetupPage({
                 </div>
               );
             })}
-          </div>
-
-          {/* Dynamic Information Box (Faithful to Aio screenshots) */}
-          <div
-            style={{
-              padding: '18px',
-              borderRadius: 'var(--radius-md)',
-              background: 'rgba(21, 19, 54, 0.7)',
-              border: '1px solid var(--border-subtle)',
-              fontSize: '0.85rem',
-              lineHeight: 1.6,
-              color: 'var(--text-secondary)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', fontWeight: 600, marginBottom: '8px' }}>
-              <Info size={16} color="#9ca3ff" />
-              <span>Information</span>
-            </div>
-
-            {settings.distributionMethod === 'Equally' && (
-              <div>
-                <p style={{ marginBottom: '6px' }}>
-                  In this scenario, each person receives an equal portion of the tips based on the hours they worked.
-                </p>
-                <ul style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <li>Tip Pool: $500</li>
-                  <li>Total Hours Worked: 25</li>
-                  <li>Calculation of Tip per Hour: $500 / 25 hours = $20 in tips per hour worked</li>
-                  <li>Server A worked 10 hours and receives $200 (10 hours * $20/hour)</li>
-                  <li>Server B worked 7 hours and receives $140 (7 hours * $20/hour)</li>
-                  <li>Food Runner worked 8 hours and receives $160 (8 hours * $20/hour)</li>
-                </ul>
-              </div>
-            )}
-
-            {settings.distributionMethod === 'Percentage' && (
-              <div>
-                <p style={{ marginBottom: '6px' }}>
-                  The tip pool is $1000, with a distribution of 60% allocated to Servers ($600) and 40% allocated to Bartenders ($400).
-                </p>
-                <ul style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <li>Server A worked 8 hours and receives $240</li>
-                  <li>Server B worked 12 hours and receives $360</li>
-                  <li>The Bartender worked 5 hours and receives the full $400 allocated to Bartenders</li>
-                  <li style={{ fontStyle: 'italic', marginTop: '4px' }}>
-                    Note: Bartenders receive their designated share regardless of the number of hours worked due to only one bartender being on duty.
-                  </li>
-                </ul>
-              </div>
-            )}
-
-            {settings.distributionMethod === 'Points' && (
-              <div>
-                <p style={{ marginBottom: '6px' }}>
-                  In this scenario, each person receives a portion of the tips based on the hours they worked, weighted by a point multiplier.
-                </p>
-                <ul style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <li>Tip Pool: $1200 | Total Hours Worked: 50</li>
-                  <li>Point Multipliers: Servers: 2 points per hour | Bartenders: 1 point per hour</li>
-                  <li>All Servers worked 30 hours, resulting in 60 point-hours (30 hours * 2 points)</li>
-                  <li>All Bartenders worked 20 hours, resulting in 20 point-hours (20 hours * 1 point)</li>
-                  <li>Total point-weighted hours: 80 | Each point-hour is worth $15 in tips ($1200 / 80)</li>
-                  <li>Server A worked 10 hours for 20 point-hours and receives $300</li>
-                  <li>Server B worked 20 hours for 40 point-hours and receives $600</li>
-                </ul>
-              </div>
-            )}
           </div>
         </div>
 

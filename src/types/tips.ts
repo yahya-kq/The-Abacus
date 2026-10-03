@@ -38,15 +38,15 @@ export interface RecipientConfig {
 }
 
 export interface TipPoolSettings {
-  poolName: string;
+  poolName?: string;
   restaurantName: string;
-  dateMode: 'single' | 'range';
+  dateMode?: 'single' | 'range';
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
-  timePeriod: 'all_day' | 'specific';
+  timePeriod?: 'all_day' | 'specific';
   specificStartTime?: string;
   specificEndTime?: string;
-  splitSetup: PoolContributionMethod; // 'percentage_of_tips' | 'percentage_of_sales'
+  splitSetup?: PoolContributionMethod | ''; // 'percentage_of_tips' | 'percentage_of_sales' | ''
   contributors: ContributorConfig[];
   sources: SourceToggles;
   customSources?: CustomContributionSource[];

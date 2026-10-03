@@ -1,84 +1,326 @@
 'use client';
 
-import React, { useState } from 'react';
-import Image from 'next/image';
-import { ArrowRight, Calculator } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { ArrowRight } from 'lucide-react';
 
 interface LandingHeroProps {
   onStart: () => void;
 }
 
 export function LandingHero({ onStart }: LandingHeroProps) {
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width - 0.5;
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-    setTilt({
-      x: -y * 8,
-      y: x * 10,
+  // 3D Geometric Canvas Animation Engine
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    let width = (canvas.width = canvas.parentElement?.clientWidth || 600);
+    let height = (canvas.height = canvas.parentElement?.clientHeight || 550);
+
+    const handleResize = () => {
+      if (!canvas || !canvas.parentElement) return;
+      width = canvas.width = canvas.parentElement.clientWidth;
+      height = canvas.height = canvas.parentElement.clientHeight;
+    };
+    window.addEventListener('resize', handleResize);
+
+    // 3D Geometry Vertices (Icosahedron / Diamond Polyhedron)
+    const phi = (1 + Math.sqrt(5)) / 2;
+    const baseVertices = [
+      [-1, phi, 0], [1, phi, 0], [-1, -phi, 0], [1, -phi, 0],
+      [0, -1, phi], [0, 1, phi], [0, -1, -phi], [0, 1, -phi],
+      [phi, 0, -1], [phi, 0, 1], [-phi, 0, -1], [-phi, 0, 1],
+    ].map(([x, y, z]) => {
+      const len = Math.sqrt(x * x + y * y + z * z);
+      return [x / len, y / len, z / len];
     });
-  };
 
-  const handleMouseLeave = () => {
-    setTilt({ x: 0, y: 0 });
-  };
+    // Edges connecting vertices
+    const edges: [number, number][] = [];
+    for (let i = 0; i < baseVertices.length; i++) {
+      for (let j = i + 1; j < baseVertices.length; j++) {
+        const dx = baseVertices[i][0] - baseVertices[j][0];
+        const dy = baseVertices[i][1] - baseVertices[j][1];
+        const dz = baseVertices[i][2] - baseVertices[j][2];
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist < 1.1) {
+          edges.push([i, j]);
+        }
+      }
+    }
+
+    // Floating orbital math particles
+    interface Particle {
+      x: number;
+      y: number;
+      z: number;
+      radius: number;
+      speed: number;
+      orbitRadius: number;
+      angle: number;
+      color: string;
+      label?: string;
+    }
+
+    const particles: Particle[] = [];
+    const glyphs = ['%', '$', '∑', '÷', '×', '0.00', '100%'];
+    for (let i = 0; i < 36; i++) {
+      const angle = (i / 36) * Math.PI * 2;
+      const orbitRadius = 140 + Math.random() * 110;
+      particles.push({
+        x: Math.cos(angle) * orbitRadius,
+        y: (Math.random() - 0.5) * 160,
+        z: Math.sin(angle) * orbitRadius,
+        radius: Math.random() * 2.5 + 1.5,
+        speed: 0.005 + Math.random() * 0.008,
+        orbitRadius,
+        angle,
+        color: i % 3 === 0 ? '#00e5a3' : i % 3 === 1 ? '#6c63ff' : '#9ca3ff',
+        label: i < glyphs.length ? glyphs[i] : undefined,
+      });
+    }
+
+    let rotX = 0.3;
+    let rotY = 0;
+    let targetRotX = 0.3;
+    let targetRotY = 0;
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      const centerX = width / 2;
+      const centerY = height / 2;
+
+      // Smooth inertia rotation
+      rotX += (targetRotX - rotX) * 0.05 + 0.002;
+      rotY += (targetRotY - rotY) * 0.05 + 0.003;
+
+      const scale = Math.min(width, height) * 0.28;
+
+      // Rotate function for 3D point
+      const rotatePoint = (x: number, y: number, z: number): [number, number, number] => {
+        // Rotate around Y
+        const cosY = Math.cos(rotY);
+        const sinY = Math.sin(rotY);
+        const x1 = x * cosY - z * sinY;
+        const z1 = x * sinY + z * cosY;
+
+        // Rotate around X
+        const cosX = Math.cos(rotX);
+        const sinX = Math.sin(rotX);
+        const y2 = y * cosX - z1 * sinX;
+        const z2 = y * sinX + z1 * cosX;
+
+        return [x1, y2, z2];
+      };
+
+      // Project 3D to 2D screen
+      const project = (x: number, y: number, z: number): [number, number, number] => {
+        const distance = 4;
+        const fov = distance / (distance + z / 300);
+        return [centerX + x * fov, centerY + y * fov, fov];
+      };
+
+      // 1. Draw glowing ambient background radial
+      const bgGlow = ctx.createRadialGradient(centerX, centerY, 10, centerX, centerY, scale * 1.8);
+      bgGlow.addColorStop(0, 'rgba(108, 99, 255, 0.15)');
+      bgGlow.addColorStop(0.5, 'rgba(0, 229, 163, 0.05)');
+      bgGlow.addColorStop(1, 'rgba(18, 17, 42, 0)');
+      ctx.fillStyle = bgGlow;
+      ctx.fillRect(0, 0, width, height);
+
+      // 2. Draw outer orbital rings
+      ctx.save();
+      ctx.strokeStyle = 'rgba(139, 142, 222, 0.12)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(centerX, centerY, scale * 1.5, scale * 0.7, rotY * 0.5, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(0, 229, 163, 0.1)';
+      ctx.beginPath();
+      ctx.ellipse(centerX, centerY, scale * 1.3, scale * 0.5, -rotX * 0.8, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // 3. Project Polyhedron Vertices
+      const projectedVertices = baseVertices.map(([vx, vy, vz]) => {
+        const [rx, ry, rz] = rotatePoint(vx * scale, vy * scale, vz * scale);
+        return project(rx, ry, rz);
+      });
+
+      // 4. Draw Polyhedron Edges with depth gradient
+      edges.forEach(([i, j]) => {
+        const [x1, y1, fov1] = projectedVertices[i];
+        const [x2, y2, fov2] = projectedVertices[j];
+        const avgFov = (fov1 + fov2) / 2;
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+
+        const edgeGrad = ctx.createLinearGradient(x1, y1, x2, y2);
+        edgeGrad.addColorStop(0, `rgba(108, 99, 255, ${Math.min(1, avgFov * 0.65)})`);
+        edgeGrad.addColorStop(0.5, `rgba(0, 229, 163, ${Math.min(1, avgFov * 0.8)})`);
+        edgeGrad.addColorStop(1, `rgba(156, 163, 255, ${Math.min(1, avgFov * 0.65)})`);
+
+        ctx.strokeStyle = edgeGrad;
+        ctx.lineWidth = Math.max(0.8, avgFov * 1.8);
+        ctx.stroke();
+      });
+
+      // 5. Draw Vertices (glowing nodes)
+      projectedVertices.forEach(([x, y, fov]) => {
+        ctx.beginPath();
+        const r = Math.max(2, 4 * fov);
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = '#00e5a3';
+        ctx.shadowColor = '#00e5a3';
+        ctx.shadowBlur = 10;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      });
+
+      // 6. Update and Draw Orbiting Particles & Glyphs
+      particles.forEach((p) => {
+        p.angle += p.speed;
+        p.x = Math.cos(p.angle) * p.orbitRadius;
+        p.z = Math.sin(p.angle) * p.orbitRadius;
+
+        const [rx, ry, rz] = rotatePoint(p.x, p.y, p.z);
+        const [px, py, fov] = project(rx, ry, rz);
+
+        if (p.label) {
+          ctx.save();
+          ctx.font = `600 ${Math.max(10, 13 * fov)}px Inter, sans-serif`;
+          ctx.fillStyle = `rgba(197, 199, 232, ${Math.min(0.9, fov * 0.85)})`;
+          ctx.fillText(p.label, px, py);
+          ctx.restore();
+        } else {
+          ctx.beginPath();
+          ctx.arc(px, py, p.radius * fov, 0, Math.PI * 2);
+          ctx.fillStyle = p.color;
+          ctx.globalAlpha = Math.min(0.8, fov * 0.7);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      });
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    // Mouse movement interaction
+    const handleCanvasMouseMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const nx = (e.clientX - rect.left) / rect.width - 0.5;
+      const ny = (e.clientY - rect.top) / rect.height - 0.5;
+      targetRotY = nx * 1.5;
+      targetRotX = -ny * 1.2;
+      setMousePos({ x: nx, y: ny });
+    };
+
+    window.addEventListener('mousemove', handleCanvasMouseMove);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('mousemove', handleCanvasMouseMove);
+    };
+  }, []);
 
   return (
     <div
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
       style={{
         position: 'relative',
-        minHeight: 'calc(100vh - 40px)',
+        minHeight: '100vh',
+        width: '100vw',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center',
-        padding: '32px 48px',
+        justifyContent: 'space-between',
+        padding: '36px 48px',
+        background: 'radial-gradient(ellipse at 80% 20%, #1d1b4a 0%, #12112a 60%, #0d0c1e 100%)',
         overflow: 'hidden',
+        boxSizing: 'border-box',
       }}
     >
-      {/* Background ambient lighting */}
+      {/* Top Brand Bar */}
       <div
         style={{
-          position: 'absolute',
-          top: '15%',
-          right: '20%',
-          width: '500px',
-          height: '500px',
-          background: 'radial-gradient(circle, rgba(93, 84, 230, 0.22) 0%, transparent 70%)',
-          filter: 'blur(60px)',
-          pointerEvents: 'none',
+          width: '100%',
+          maxWidth: '1400px',
+          margin: '0 auto',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          zIndex: 20,
         }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '10%',
-          left: '10%',
-          width: '400px',
-          height: '400px',
-          background: 'radial-gradient(circle, rgba(124, 102, 220, 0.16) 0%, transparent 70%)',
-          filter: 'blur(60px)',
-          pointerEvents: 'none',
-        }}
-      />
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span
+            style={{
+              fontSize: '1.45rem',
+              fontWeight: 900,
+              letterSpacing: '-0.03em',
+              color: '#ffffff',
+            }}
+          >
+            ABACUS
+          </span>
+          <span
+            style={{
+              fontSize: '0.72rem',
+              padding: '3px 8px',
+              borderRadius: '6px',
+              background: 'rgba(93, 84, 230, 0.2)',
+              border: '1px solid rgba(108, 99, 255, 0.35)',
+              color: '#9ca3ff',
+              fontWeight: 700,
+              letterSpacing: '0.05em',
+              textTransform: 'uppercase',
+            }}
+          >
+            Tip Calculator
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: '#00e5a3',
+              boxShadow: '0 0 10px #00e5a3',
+            }}
+          />
+          <span style={{ fontSize: '0.82rem', color: '#c5c7e8', fontWeight: 500 }}>
+            Ready
+          </span>
+        </div>
+      </div>
 
       {/* Main Split Hero Grid */}
       <div
         style={{
-          maxWidth: '1360px',
+          maxWidth: '1400px',
           width: '100%',
-          margin: '0 auto',
+          margin: 'auto',
           display: 'grid',
-          gridTemplateColumns: 'minmax(420px, 1.1fr) minmax(440px, 1.2fr)',
+          gridTemplateColumns: 'minmax(400px, 1fr) minmax(420px, 1fr)',
           alignItems: 'center',
-          gap: '60px',
+          gap: '40px',
           zIndex: 10,
+          padding: '24px 0',
         }}
       >
-        {/* Left Side Content */}
+        {/* Left Column: Headlines & CTA */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
           {/* Eyebrow */}
           <div
@@ -95,7 +337,7 @@ export function LandingHero({ onStart }: LandingHeroProps) {
               fontWeight: 600,
               letterSpacing: '0.04em',
               textTransform: 'uppercase',
-              marginBottom: '24px',
+              marginBottom: '20px',
             }}
           >
             <span
@@ -110,10 +352,10 @@ export function LandingHero({ onStart }: LandingHeroProps) {
             Restaurant Tip Pooling Engine
           </div>
 
-          {/* Headline (Matching COLORCODE typography) */}
+          {/* Headline */}
           <h1
             style={{
-              fontSize: 'clamp(2.8rem, 5vw, 4.2rem)',
+              fontSize: 'clamp(2.8rem, 5.2vw, 4.2rem)',
               fontWeight: 800,
               letterSpacing: '-0.03em',
               color: '#ffffff',
@@ -125,10 +367,10 @@ export function LandingHero({ onStart }: LandingHeroProps) {
             Tip Calculator
           </h1>
 
-          {/* Subheading / Tag */}
+          {/* Subheading */}
           <div
             style={{
-              fontSize: '1rem',
+              fontSize: '0.98rem',
               fontWeight: 700,
               letterSpacing: '0.12em',
               textTransform: 'uppercase',
@@ -152,7 +394,7 @@ export function LandingHero({ onStart }: LandingHeroProps) {
             Configurable role weights, multi-channel tip pooling, and instant client-ready reporting engineered for flawless hospitality operations.
           </p>
 
-          {/* Single Prominent Call-to-Action Button */}
+          {/* Prominent Call-to-Action Button */}
           <button
             id="run-abacus-btn"
             onClick={onStart}
@@ -188,116 +430,45 @@ export function LandingHero({ onStart }: LandingHeroProps) {
           </button>
         </div>
 
-        {/* Right Side: 3D Art Composition & Calculator */}
+        {/* Right Column: Code-Driven 3D Interactive Animation */}
         <div
           style={{
             position: 'relative',
+            width: '100%',
+            height: '520px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            perspective: '1200px',
-            minHeight: '520px',
           }}
         >
-          {/* Main 3D Card with interactive tilt */}
-          <div
+          <canvas
+            ref={canvasRef}
             style={{
-              position: 'relative',
               width: '100%',
-              maxWidth: '560px',
-              height: '480px',
-              transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
-              transition: 'transform 0.15s ease-out',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              height: '100%',
+              display: 'block',
+              filter: 'drop-shadow(0 20px 40px rgba(0, 0, 0, 0.6))',
             }}
-          >
-            {/* Background 3D Theme Reference Art Canvas */}
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                borderRadius: '24px',
-                overflow: 'hidden',
-                boxShadow: '0 24px 60px rgba(9, 8, 22, 0.7), 0 0 40px rgba(93, 84, 230, 0.25)',
-                border: '1px solid rgba(139, 142, 222, 0.25)',
-                background: 'linear-gradient(135deg, #1d1b4a 0%, #151336 100%)',
-              }}
-            >
-              <Image
-                src="/images/colorcode_theme.jpg"
-                alt="Colorcode Theme Geometry"
-                fill
-                priority
-                style={{
-                  objectFit: 'cover',
-                  opacity: 0.65,
-                  mixBlendMode: 'luminosity',
-                }}
-              />
-            </div>
-
-            {/* Floating 3D Calculator Asset with Gold Coins */}
-            <div
-              className="animate-float"
-              style={{
-                position: 'relative',
-                zIndex: 20,
-                width: '320px',
-                height: '320px',
-                filter: 'drop-shadow(0 20px 40px rgba(0, 0, 0, 0.8)) drop-shadow(0 0 30px rgba(0, 229, 163, 0.25))',
-                cursor: 'pointer',
-                transition: 'transform 0.3s ease',
-              }}
-              onClick={onStart}
-            >
-              <Image
-                src="/images/calculator_3d.jpg"
-                alt="3D Abacus Tip Calculator"
-                width={320}
-                height={320}
-                priority
-                style={{
-                  borderRadius: '24px',
-                  objectFit: 'contain',
-                }}
-              />
-
-              {/* Floating Real-time Pill Badge */}
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: '-12px',
-                  right: '-12px',
-                  background: 'rgba(18, 17, 42, 0.92)',
-                  backdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(0, 229, 163, 0.4)',
-                  padding: '8px 16px',
-                  borderRadius: '9999px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  color: '#ffffff',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  boxShadow: '0 8px 20px rgba(0, 0, 0, 0.5)',
-                }}
-              >
-                <span
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: '#00e5a3',
-                    boxShadow: '0 0 10px #00e5a3',
-                  }}
-                />
-                Instant Calculation Engine
-              </div>
-            </div>
-          </div>
+          />
         </div>
+      </div>
+
+      {/* Bottom Subtle Indicator */}
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '1400px',
+          margin: '0 auto',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: '0.8rem',
+          color: '#8e91be',
+          zIndex: 20,
+        }}
+      >
+        <span>Deterministic Multi-Unit Allocation</span>
+        <span>Version 1.0</span>
       </div>
     </div>
   );
