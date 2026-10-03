@@ -53,32 +53,6 @@ For each employee across the calculation cycle:
 
 ---
 
-## Verified Reference Calculations
-
-The calculation engine has been verified against historical operating periods:
-
-### Mission Hill Coffee and Creamery (September 7 to September 20, 2026)
-* Structure: Equal hourly distribution across Cashier and Server roles.
-* Cutoff Hour: 12:00 PM.
-* Pool Sources: Web Dashboard and Kiosk collections.
-* Verification Results:
-  * Total Eligible Hours: 275.65 hours (100% match with historical payroll ledger).
-  * Total Tips Distributed: $2,118.87 (100% match with historical payroll ledger).
-  * Reconciliation Discrepancy: $0.00.
-
-| Employee Name | Role | Total Hours | Distributed Tips | Status |
-| :--- | :--- | :---: | :---: | :---: |
-| Sally Rodriguez | Cashier | 57.85 | $490.91 | Verified |
-| Meckenzie Anderson | Server | 55.69 | $430.03 | Verified |
-| Micaela Hartley | Cashier | 43.78 | $405.95 | Verified |
-| Lauren Sanders | Cashier | 44.86 | $314.82 | Verified |
-| Michelle Osnovikov | Cashier | 37.22 | $215.48 | Verified |
-| Cynthia Rosales Perez | Cashier / Server | 23.66 | $183.16 | Verified |
-| Natalie Dreyer | Cashier | 7.78 | $63.89 | Verified |
-| Mikaela Sosa Fuentes | Server | 4.81 | $14.62 | Verified |
-
----
-
 ## Application Structure and Modules
 
 ```
