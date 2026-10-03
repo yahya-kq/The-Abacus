@@ -4,7 +4,6 @@ Abacus is a tip calculation and pooling application designed for multi-unit rest
 
 The system is configured to support varied restaurant tip pool structures, including uniform hourly pooling, weighted role points, and role percentage splits, with support for direct tip retention, sales-based contributions, and multi-channel order sources (Kiosk, Online, and Third-Party Delivery).
 
----
 
 ## System Architecture and Core Calculation Logic
 
@@ -51,11 +50,10 @@ For each employee across the calculation cycle:
 * `Total Payout = Total Kept Tips + Total Pool Received`
 * `Effective Hourly Rate = Total Payout / Total Hours`
 
----
 
 ## Application Structure and Modules
 
-```
+
 src/
 ├── app/
 │   ├── globals.css              # Design tokens, color palette, responsive table utilities
@@ -79,7 +77,7 @@ src/
     └── tips.ts                  # TypeScript interface and type definitions
 ```
 
----
+
 
 ## Client PDF Export
 
@@ -123,7 +121,7 @@ The PDF export module generates client-ready distribution summaries formatted fo
    npm run build
    ```
 
----
+
 
 ## Deployment to Vercel
 
@@ -140,7 +138,6 @@ The application is structured for zero-configuration deployment on Vercel:
    * **Install Command**: `npm install`
 5. Click **Deploy**. Vercel will compile the TypeScript codebase, generate optimized server and static assets, and issue a live production URL.
 
----
 
 ## License
 
