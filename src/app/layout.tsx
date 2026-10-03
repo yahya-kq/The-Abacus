@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Abacus — Restaurant Tip Calculator | Mission Hill',
-  description: 'Production-ready restaurant tip calculation intelligence engine. Equal, pooling, percentage, and points tip distribution.',
+  title: 'Abacus — The Restaurant Tip Calculator',
+  description: 'Precision restaurant tip pooling and calculation engine. Configurable role weights, multi-channel tip pooling, and transparent reporting.',
 };
 
 export default function RootLayout({

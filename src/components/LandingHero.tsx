@@ -363,7 +363,7 @@ export function LandingHero({ onStart }: LandingHeroProps) {
               marginBottom: '16px',
             }}
           >
-            The new <br />
+            The Restaurant <br />
             Tip Calculator
           </h1>
 
@@ -378,7 +378,7 @@ export function LandingHero({ onStart }: LandingHeroProps) {
               marginBottom: '18px',
             }}
           >
-            PRECISION POOLING ENGINE
+            ABACUS POOLING ENGINE
           </div>
 
           {/* Body Description */}
