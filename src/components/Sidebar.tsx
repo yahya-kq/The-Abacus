@@ -10,7 +10,7 @@ import {
   FileSpreadsheet,
   ChevronLeft,
   ChevronRight,
-  Menu,
+  Coffee,
 } from 'lucide-react';
 
 export type NavScreen = 'hero' | 'setup' | 'timecards' | 'dashboard';
@@ -22,6 +22,7 @@ interface SidebarProps {
   onToggleCollapse: () => void;
   onHardRefresh: () => void;
   onLoadTestData: () => void;
+  onLoadMissionHillData: () => void;
 }
 
 export function Sidebar({
@@ -31,6 +32,7 @@ export function Sidebar({
   onToggleCollapse,
   onHardRefresh,
   onLoadTestData,
+  onLoadMissionHillData,
 }: SidebarProps) {
   const navItems = [
     {
@@ -231,6 +233,40 @@ export function Sidebar({
           gap: '8px',
         }}
       >
+        {/* Load Mission Hill Data */}
+        <button
+          onClick={onLoadMissionHillData}
+          type="button"
+          title={isCollapsed ? 'Load Mission Hill Sample Dataset' : undefined}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: isCollapsed ? '10px' : '10px 12px',
+            justifyContent: isCollapsed ? 'center' : 'flex-start',
+            borderRadius: '8px',
+            background: 'rgba(93, 84, 230, 0.1)',
+            border: '1px solid rgba(108, 99, 255, 0.3)',
+            color: '#a49eff',
+            fontSize: '0.84rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            width: '100%',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(93, 84, 230, 0.2)';
+            e.currentTarget.style.borderColor = '#6c63ff';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(93, 84, 230, 0.1)';
+            e.currentTarget.style.borderColor = 'rgba(108, 99, 255, 0.3)';
+          }}
+        >
+          <Coffee size={16} />
+          {!isCollapsed && <span>Load Mission Hill Data</span>}
+        </button>
+
         {/* Load Test-1 Data */}
         <button
           onClick={onLoadTestData}
@@ -265,7 +301,7 @@ export function Sidebar({
           {!isCollapsed && <span>Load Test-1 Data</span>}
         </button>
 
-        {/* Hard Refresh Button (Required in Audio 2) */}
+        {/* Hard Refresh Button */}
         <button
           onClick={onHardRefresh}
           type="button"

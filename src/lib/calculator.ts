@@ -134,7 +134,9 @@ export function calculateTipCycle(
     const otherContrib = (dayInput.otherTips || 0);
 
     const externalPool = kioskContrib + onlineContrib + thirdPartyContrib + otherContrib;
-    const totalDayPool = Math.round((dayShiftContributions + externalPool) * 100) / 100;
+    const computedPool = dayShiftContributions + externalPool;
+    const effectivePool = computedPool > 0 ? computedPool : (dayInput.totalTips || 0);
+    const totalDayPool = Math.round(effectivePool * 100) / 100;
 
     cycleTotalPool += totalDayPool;
 

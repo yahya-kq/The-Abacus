@@ -112,18 +112,14 @@ export function SetupPage({
     }
   };
 
-  // Contributors management
+  // Contributors management (clean slate: user can type or choose any role)
   const addContributor = () => {
-    const unpicked = allAvailableRoles.find(
-      (r) => !settings.contributors.some((c) => c.role.toLowerCase() === r.toLowerCase())
-    ) || allAvailableRoles[0];
-
     const updated = [
       ...settings.contributors,
       {
         id: `contrib-${Date.now()}`,
-        role: unpicked,
-        contributionPercent: 0,
+        role: '',
+        contributionPercent: 100,
         source: 'All',
       },
     ];
@@ -141,17 +137,39 @@ export function SetupPage({
     onUpdateSettings({ ...settings, contributors: updated });
   };
 
-  // Recipients management
-  const addRecipient = () => {
-    const unpicked = allAvailableRoles.find(
-      (r) => !settings.recipients.some((rc) => rc.role.toLowerCase() === r.toLowerCase())
-    ) || allAvailableRoles[0];
+  // Custom contribution sources management
+  const addCustomSource = () => {
+    const custom = settings.customSources || [];
+    const updated = [
+      ...custom,
+      {
+        id: `csrc-${Date.now()}`,
+        name: 'Custom Channel',
+        enabled: true,
+        percent: 100,
+      },
+    ];
+    onUpdateSettings({ ...settings, customSources: updated });
+  };
 
+  const removeCustomSource = (index: number) => {
+    const custom = (settings.customSources || []).filter((_, i) => i !== index);
+    onUpdateSettings({ ...settings, customSources: custom });
+  };
+
+  const updateCustomSource = (index: number, field: string, value: any) => {
+    const custom = [...(settings.customSources || [])];
+    custom[index] = { ...custom[index], [field]: value };
+    onUpdateSettings({ ...settings, customSources: custom });
+  };
+
+  // Recipients management (clean slate: user can type or choose any role)
+  const addRecipient = () => {
     const updated = [
       ...settings.recipients,
       {
         id: `recip-${Date.now()}`,
-        role: unpicked,
+        role: '',
         distributionPercent: 0,
         pointsPerHour: 1,
       },
@@ -167,6 +185,34 @@ export function SetupPage({
   const updateRecipient = (index: number, field: string, value: any) => {
     const updated = [...settings.recipients];
     updated[index] = { ...updated[index], [field]: value };
+    onUpdateSettings({ ...settings, recipients: updated });
+  };
+
+  const addRoleAsContributor = (role: string) => {
+    if (settings.contributors.some((c) => c.role.toLowerCase() === role.toLowerCase())) return;
+    const updated = [
+      ...settings.contributors,
+      {
+        id: `contrib-${Date.now()}-${Math.random()}`,
+        role,
+        contributionPercent: 0,
+        source: 'All',
+      },
+    ];
+    onUpdateSettings({ ...settings, contributors: updated });
+  };
+
+  const addRoleAsRecipient = (role: string) => {
+    if (settings.recipients.some((r) => r.role.toLowerCase() === role.toLowerCase())) return;
+    const updated = [
+      ...settings.recipients,
+      {
+        id: `recip-${Date.now()}-${Math.random()}`,
+        role,
+        distributionPercent: 0,
+        pointsPerHour: 1,
+      },
+    ];
     onUpdateSettings({ ...settings, recipients: updated });
   };
 
@@ -444,8 +490,39 @@ export function SetupPage({
               </p>
             </div>
 
+            {/* Detected roles helper banner */}
+            {detectedRoles.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', padding: '10px 14px', borderRadius: '8px', background: 'rgba(93, 84, 230, 0.1)', border: '1px solid rgba(108, 99, 255, 0.25)', marginBottom: '16px' }}>
+                <span style={{ fontSize: '0.8rem', color: '#9ca3ff', fontWeight: 600 }}>Detected Roles in Shift Data:</span>
+                {detectedRoles.map((role) => (
+                  <div key={role} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--bg-input)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--border-subtle)', fontSize: '0.78rem' }}>
+                    <span style={{ color: '#ffffff', fontWeight: 500 }}>{role}</span>
+                    <button
+                      type="button"
+                      onClick={() => addRoleAsContributor(role)}
+                      style={{ background: 'transparent', border: 'none', color: '#ff5f6d', cursor: 'pointer', padding: '0 2px', fontWeight: 700 }}
+                    >
+                      + Contrib
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => addRoleAsRecipient(role)}
+                      style={{ background: 'transparent', border: 'none', color: '#00e5a3', cursor: 'pointer', padding: '0 2px', fontWeight: 700 }}
+                    >
+                      + Recipient
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Table of Role Contributors */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+              {settings.contributors.length === 0 && (
+                <div style={{ padding: '16px', borderRadius: '8px', background: 'rgba(139, 142, 222, 0.06)', border: '1px dashed var(--border-subtle)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  No role contributors added yet. Click &quot;+ Add contributor&quot; below to configure role splits, or use the automated channel toggles (KIOSK, Online, QR, 3PO).
+                </div>
+              )}
               {settings.contributors.map((contrib, idx) => (
                 <div
                   key={contrib.id}
@@ -456,17 +533,16 @@ export function SetupPage({
                     alignItems: 'center',
                   }}
                 >
-                  <select
-                    className="input-clean"
-                    value={contrib.role}
-                    onChange={(e) => updateContributor(idx, 'role', e.target.value)}
-                  >
-                    {allAvailableRoles.map((r) => (
-                      <option key={r} value={r} style={{ background: '#151336' }}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="text"
+                      list="all-available-roles"
+                      className="input-clean"
+                      value={contrib.role}
+                      placeholder="Role (e.g. Server, Cashier)..."
+                      onChange={(e) => updateContributor(idx, 'role', e.target.value)}
+                    />
+                  </div>
 
                   <div style={{ position: 'relative' }}>
                     <input
@@ -699,27 +775,97 @@ export function SetupPage({
                 </div>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Third-Party (DoorDash / UberEats)</span>
               </div>
+
+              {/* Custom Sources */}
+              {settings.customSources && settings.customSources.map((cSrc, cIdx) => (
+                <div key={cSrc.id} style={{ display: 'grid', gridTemplateColumns: '160px minmax(120px, 1fr) minmax(140px, 1.2fr) 40px', gap: '12px', alignItems: 'center' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.9rem', color: '#ffffff' }}>
+                    <input
+                      type="checkbox"
+                      checked={cSrc.enabled}
+                      onChange={(e) => updateCustomSource(cIdx, 'enabled', e.target.checked)}
+                    />
+                    <input
+                      type="text"
+                      className="input-clean"
+                      value={cSrc.name}
+                      placeholder="Source name..."
+                      onChange={(e) => updateCustomSource(cIdx, 'name', e.target.value)}
+                      style={{ padding: '4px 8px', fontSize: '0.85rem' }}
+                    />
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="100"
+                      className="input-clean"
+                      value={cSrc.percent}
+                      disabled={!cSrc.enabled}
+                      onChange={(e) => updateCustomSource(cIdx, 'percent', parseFloat(e.target.value) || 0)}
+                      style={{ paddingRight: '28px', opacity: cSrc.enabled ? 1 : 0.5 }}
+                    />
+                    <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      %
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Custom Source Contribution</span>
+                  <button
+                    onClick={() => removeCustomSource(cIdx)}
+                    type="button"
+                    title="Remove custom source"
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = '#ff5f6d')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
             </div>
 
-            <button
-              onClick={addContributor}
-              type="button"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: 'transparent',
-                border: 'none',
-                color: '#ff5f6d',
-                fontSize: '0.88rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                padding: '4px 0',
-              }}
-            >
-              <Plus size={16} />
-              <span>Add contributor</span>
-            </button>
+            <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={addContributor}
+                type="button"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#ff5f6d',
+                  fontSize: '0.88rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '4px 0',
+                }}
+              >
+                <Plus size={16} />
+                <span>Add role contributor</span>
+              </button>
+
+              <button
+                onClick={addCustomSource}
+                type="button"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#9ca3ff',
+                  fontSize: '0.88rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '4px 0',
+                }}
+              >
+                <Plus size={16} />
+                <span>Add custom contribution source</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -854,6 +1000,11 @@ export function SetupPage({
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px', marginBottom: '16px' }}>
+            {settings.recipients.length === 0 && (
+              <div style={{ padding: '16px', borderRadius: '8px', background: 'rgba(139, 142, 222, 0.06)', border: '1px dashed var(--border-subtle)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                No recipient roles configured yet. Click &quot;+ Add recipient&quot; below or click a detected role above to receive tip pool allocations.
+              </div>
+            )}
             {settings.recipients.map((recip, idx) => (
               <div
                 key={recip.id}
@@ -864,17 +1015,16 @@ export function SetupPage({
                   alignItems: 'center',
                 }}
               >
-                <select
-                  className="input-clean"
-                  value={recip.role}
-                  onChange={(e) => updateRecipient(idx, 'role', e.target.value)}
-                >
-                  {allAvailableRoles.map((r) => (
-                    <option key={r} value={r} style={{ background: '#151336' }}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="text"
+                    list="all-available-roles"
+                    className="input-clean"
+                    value={recip.role}
+                    placeholder="Role (e.g. Server, Cashier)..."
+                    onChange={(e) => updateRecipient(idx, 'role', e.target.value)}
+                  />
+                </div>
 
                 {settings.distributionMethod === 'Equally' && (
                   <div
@@ -1137,7 +1287,13 @@ export function SetupPage({
             </div>
           </div>
         </div>
-      </div>
+      {/* Datalist for fast role auto-complete while preserving free text typing */}
+      <datalist id="all-available-roles">
+        {allAvailableRoles.map((r) => (
+          <option key={r} value={r} />
+        ))}
+      </datalist>
     </div>
+  </div>
   );
 }

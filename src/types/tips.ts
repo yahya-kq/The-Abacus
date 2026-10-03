@@ -16,6 +16,13 @@ export interface SourceToggleItem {
   source?: string;
 }
 
+export interface CustomContributionSource {
+  id: string;
+  name: string;
+  enabled: boolean;
+  percent: number;
+}
+
 export interface SourceToggles {
   kiosk: SourceToggleItem;
   online: SourceToggleItem;
@@ -42,6 +49,7 @@ export interface TipPoolSettings {
   splitSetup: PoolContributionMethod; // 'percentage_of_tips' | 'percentage_of_sales'
   contributors: ContributorConfig[];
   sources: SourceToggles;
+  customSources?: CustomContributionSource[];
   distributionMethod: PoolDistributionMethod; // 'Equally' | 'Percentage' | 'Points'
   recipients: RecipientConfig[];
   businessDayCutoffHour: number; // e.g. 12
@@ -60,7 +68,7 @@ export interface ProcessedShift {
   overtimeHours?: number;
   totalHours: number; // Decisive metric
   netSale: number;
-  collectedTips: number; // Replaces previous posTips
+  collectedTips: number;
   gratuity: number;
   calendarDate: string; // YYYY-MM-DD
   businessDate: string; // YYYY-MM-DD

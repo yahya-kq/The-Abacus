@@ -15,42 +15,39 @@ import {
 import { calculateTipCycle, generateDateRange } from '../lib/calculator';
 import { formatDisplayDate, getDayOfWeek } from '../lib/parser';
 import { TEST_1_SHIFTS, TEST_1_EXTRACTED_TIPS } from '../lib/testSampleData';
+import { MISSION_HILL_SHIFTS, MISSION_HILL_DAILY_TIPS } from '../lib/missionHillData';
 
 export default function Home() {
   const [currentScreen, setCurrentScreen] = useState<NavScreen>('hero');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Default Pool Settings matching Test-1 Excel Model
+  // Pool Settings state (Clean, no assumptions by default per user request)
   const [settings, setSettings] = useState<TipPoolSettings>({
-    poolName: 'Mission Hill Tip Pool',
-    restaurantName: 'Mission Hill',
+    poolName: '',
+    restaurantName: '',
     dateMode: 'range',
     startDate: '2026-09-07',
     endDate: '2026-09-20',
     timePeriod: 'all_day',
     splitSetup: 'percentage_of_tips',
-    contributors: [
-      { id: 'c1', role: 'Summary', contributionPercent: 100, source: 'All' },
-      { id: 'c2', role: 'Kiosk', contributionPercent: 100, source: 'All' },
-    ],
+    contributors: [],
     sources: {
-      kiosk: { enabled: true, percent: 100 },
-      online: { enabled: true, percent: 100 },
+      kiosk: { enabled: false, percent: 100 },
+      online: { enabled: false, percent: 100 },
       qr: { enabled: false, percent: 100 },
-      thirdParty: { enabled: true, percent: 100, source: 'All' },
+      thirdParty: { enabled: false, percent: 100, source: 'All' },
     },
+    customSources: [],
     distributionMethod: 'Equally',
-    recipients: [
-      { id: 'r1', role: 'Barista', distributionPercent: 100, pointsPerHour: 1 },
-    ],
+    recipients: [],
     businessDayCutoffHour: 12,
     timezone: 'America/New_York',
   });
 
-  // Shifts state (preloaded with Test-1 data so app is active immediately)
-  const [shifts, setShifts] = useState<ProcessedShift[]>(TEST_1_SHIFTS);
-  const [timeCardFileName, setTimeCardFileName] = useState<string | null>('tip_pool_calculator_Test-1 1.xlsx');
+  // Shifts state
+  const [shifts, setShifts] = useState<ProcessedShift[]>([]);
+  const [timeCardFileName, setTimeCardFileName] = useState<string | null>(null);
   const [dailyTipInputs, setDailyTipInputs] = useState<Record<string, DailyTipInput>>({});
 
   // Show temporary toast
@@ -61,7 +58,7 @@ export default function Home() {
     }, 3500);
   };
 
-  // Sync dailyTipInputs when date range or extracted tips change
+  // Sync dailyTipInputs when date range changes
   const cycleDates = useMemo(
     () => generateDateRange(settings.startDate, settings.endDate),
     [settings.startDate, settings.endDate]
@@ -72,16 +69,15 @@ export default function Home() {
       const updated = { ...prev };
       for (const d of cycleDates) {
         if (!updated[d]) {
-          const preExtracted = TEST_1_EXTRACTED_TIPS[d] || 0;
           updated[d] = {
             date: d,
             displayDate: formatDisplayDate(d),
             dayOfWeek: getDayOfWeek(d),
-            webDashTips: Math.round(preExtracted * 0.7 * 100) / 100,
+            webDashTips: 0,
             doorDashTips: 0,
-            kioskTips: Math.round(preExtracted * 0.3 * 100) / 100,
+            kioskTips: 0,
             otherTips: 0,
-            totalTips: preExtracted,
+            totalTips: 0,
           };
         }
       }
@@ -103,18 +99,6 @@ export default function Home() {
     const updatedSettings = { ...settings };
     if (detectedStart) updatedSettings.startDate = detectedStart;
     if (detectedEnd) updatedSettings.endDate = detectedEnd;
-
-    // Detect roles from uploaded file
-    const rolesInShifts = Array.from(new Set(loadedShifts.map((s) => s.role))).filter(Boolean);
-    const hasBarista = rolesInShifts.some((r) => r.toLowerCase() === 'barista');
-    const hasServer = rolesInShifts.some((r) => r.toLowerCase() === 'server');
-
-    if (hasBarista && !updatedSettings.recipients.some((r) => r.role.toLowerCase() === 'barista')) {
-      updatedSettings.recipients = [{ id: 'r-barista', role: 'Barista', distributionPercent: 100, pointsPerHour: 1 }];
-    } else if (hasServer && !updatedSettings.recipients.some((r) => r.role.toLowerCase() === 'server')) {
-      updatedSettings.recipients = [{ id: 'r-server', role: 'Server', distributionPercent: 100, pointsPerHour: 1 }];
-    }
-
     setSettings(updatedSettings);
 
     if (extractedTips && Object.keys(extractedTips).length > 0) {
@@ -169,14 +153,73 @@ export default function Home() {
     setShifts([]);
     setTimeCardFileName(null);
     setDailyTipInputs({});
-    setSettings((prev) => ({
-      ...prev,
+    setSettings({
       poolName: '',
       restaurantName: '',
+      dateMode: 'range',
+      startDate: '2026-09-07',
+      endDate: '2026-09-20',
+      timePeriod: 'all_day',
+      splitSetup: 'percentage_of_tips',
       contributors: [],
+      sources: {
+        kiosk: { enabled: false, percent: 100 },
+        online: { enabled: false, percent: 100 },
+        qr: { enabled: false, percent: 100 },
+        thirdParty: { enabled: false, percent: 100, source: 'All' },
+      },
+      customSources: [],
+      distributionMethod: 'Equally',
       recipients: [],
-    }));
+      businessDayCutoffHour: 12,
+      timezone: 'America/New_York',
+    });
     showToast('Hard Refresh Complete: All shifts and temporary inputs cleared.');
+  };
+
+  // Load Mission Hill Dataset
+  const handleLoadMissionHillData = () => {
+    setShifts(MISSION_HILL_SHIFTS);
+    setTimeCardFileName('Mission_Hill_Coffee_&_Creamery_Time_Card_Report_2026-09-07_to_2026-09-20.csv');
+    setSettings({
+      poolName: 'Mission Hill Coffee & Creamery',
+      restaurantName: 'Mission Hill',
+      dateMode: 'range',
+      startDate: '2026-09-07',
+      endDate: '2026-09-20',
+      timePeriod: 'all_day',
+      splitSetup: 'percentage_of_tips',
+      contributors: [],
+      sources: {
+        kiosk: { enabled: true, percent: 100 },
+        online: { enabled: true, percent: 100 },
+        qr: { enabled: false, percent: 100 },
+        thirdParty: { enabled: true, percent: 100, source: 'All' },
+      },
+      distributionMethod: 'Equally',
+      recipients: [
+        { id: 'r-cashier', role: 'Cashier', distributionPercent: 50, pointsPerHour: 1 },
+        { id: 'r-server', role: 'Server', distributionPercent: 50, pointsPerHour: 1 },
+      ],
+      businessDayCutoffHour: 12,
+      timezone: 'America/New_York',
+    });
+
+    const nextInputs: Record<string, DailyTipInput> = {};
+    for (const [date, val] of Object.entries(MISSION_HILL_DAILY_TIPS)) {
+      nextInputs[date] = {
+        date,
+        displayDate: formatDisplayDate(date),
+        dayOfWeek: getDayOfWeek(date),
+        webDashTips: val.webDashTips || 0,
+        doorDashTips: val.doorDashTips || 0,
+        kioskTips: val.kioskTips || 0,
+        otherTips: 0,
+        totalTips: val.totalTips || 0,
+      };
+    }
+    setDailyTipInputs(nextInputs);
+    showToast('Mission Hill dataset loaded (51 shifts, 275.65 hrs, $2,118.87 tips).');
   };
 
   // Quick reload Test-1 Sample Dataset
@@ -184,8 +227,8 @@ export default function Home() {
     setShifts(TEST_1_SHIFTS);
     setTimeCardFileName('tip_pool_calculator_Test-1 1.xlsx');
     setSettings({
-      poolName: 'Mission Hill Tip Pool',
-      restaurantName: 'Mission Hill',
+      poolName: 'Test-1 Tip Pool',
+      restaurantName: 'Test-1 Restaurant',
       dateMode: 'range',
       startDate: '2026-09-07',
       endDate: '2026-09-20',
@@ -223,7 +266,6 @@ export default function Home() {
       };
     }
     setDailyTipInputs(nextInputs);
-
     showToast('Test-1 Sample Dataset loaded successfully (82 active shifts).');
   };
 
@@ -242,6 +284,7 @@ export default function Home() {
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         onHardRefresh={handleHardRefresh}
         onLoadTestData={handleLoadTestData}
+        onLoadMissionHillData={handleLoadMissionHillData}
       />
 
       {/* Main Content Area */}
@@ -319,7 +362,6 @@ export default function Home() {
               gap: '10px',
               fontSize: '0.9rem',
               fontWeight: 500,
-              animation: 'fadeIn 0.2s ease',
             }}
           >
             <span

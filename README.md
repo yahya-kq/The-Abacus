@@ -1,108 +1,173 @@
-# Abacus — Restaurant Tip Calculator
+# Abacus - Restaurant Tip Calculation System
 
-**Abacus** is a modern, production-ready restaurant tip calculation web application built with **Next.js 15**, **React 19**, and **TypeScript**.
+Abacus is a tip calculation and pooling application designed for multi-unit restaurant operations. The application automates shift aggregation, rule-based tip contribution, multi-method pool distribution, and payroll reporting.
 
-Initially developed and mathematically audited for **Mission Hill** restaurant, the application architecture is engineered to easily scale across ~40 restaurants with distinct tip distribution systems (**Equal**, **Pooling**, **Percentage**, and **Points**).
-
----
-
-## 🌟 Key Highlights & Features
-
-1. **3D Visual Experience & Modern UI/UX**
-   - Clean, dark-mode first design with glassmorphism, subtle glowing mesh accents, and card perspective effects.
-   - Central hero action: **Run Abacus**.
-   - Non-cluttered executive dashboard suitable for restaurant owners, general managers, and payroll processors.
-
-2. **Source of Truth Compliance & 100% Mathematical Precision**
-   - **Total Hours Rule**: Complies strictly with the prompt directive: calculates tips using the employee's **TOTAL HOURS** (excluding unpaid breaks) directly from the time card. Does **NOT** separately calculate regular hours or overtime hours.
-   - **Toast POS Tip Pool Structure**: Direct digital replication of the Mission Hill Server/Cashier tip pool:
-     - **Contributors (100%)**: Server, Cashier, Owner, Kiosk, Online, QR, 3PO.
-     - **Recipients**: Cashier (Equal Share per hour), Server (Equal Share per hour).
-     - **Excluded Roles**: Management / Kitchen roles (e.g., Kitchen Manager) are automatically audited and excluded from recipient tip allocations.
-   - **Business Day Operating Cycle**: Accurately maps overnight and morning shifts (shifts starting before 12:00 PM belong to the preceding evening's operating cycle, matching POS and Excel date groupings).
-   - **Reconciliation Audit**: Guaranteed **$0.00 difference** between total tip inputs and total employee distributions.
-
-3. **Streamlined 4-Step Workflow**
-   - **Step 1 — Cycle Selection**: Interactive calendar picker with presets (e.g. September 7 → September 20, 2026).
-   - **Step 2 — Time Card Upload**: Drag-and-drop support for `.xlsx`, `.xls`, and `.csv` files + 1-click sample loader.
-   - **Step 3 — Daily Tip Entry**: Automatically populates all cycle dates for clean entry of WebDash, DoorDash, Kiosk, Chaos, and Other collected tips. Includes 1-click auto-fill for sample verification.
-   - **Step 4 — Run Calculation**: Instantly computes daily rates, employee allocations, and whole-cycle payouts with celebration confetti.
-
-4. **Executive PDF Export**
-   - Professional, client-ready, multi-page PDF generation via `jsPDF` and `jspdf-autotable`.
-   - Free of spreadsheet clutter; includes executive KPI cards, master employee payout tables, date-by-date reconciliation, and formal verification sign-off blocks.
-
-5. **Temporary / Session-Based Architecture**
-   - Protects sensitive payroll data and eliminates database burden.
-   - Calculations are stored temporary/in-session and can be wiped instantly with the **Reset Cycle** action.
-
-6. **Extensible Multi-Restaurant Architecture**
-   - Modular configuration system (`src/config/restaurants.ts`) ready to support ~40 future restaurants with configurable tip pool types:
-     - `equal`: Equal distribution per hour (Mission Hill).
-     - `pooling`: Shift-based pool allocations.
-     - `percentage`: Tiered front-of-house percentages.
-     - `points`: Seniority and role weight points.
+The system is configured to support varied restaurant tip pool structures, including uniform hourly pooling, weighted role points, and role percentage splits, with support for direct tip retention, sales-based contributions, and multi-channel order sources (Kiosk, Online, and Third-Party Delivery).
 
 ---
 
-## 📊 Verification & Audit Results (Mission Hill Reference Cycle: Sep 7 – Sep 20)
+## System Architecture and Core Calculation Logic
 
-| Metric | Source Excel (`Mission Hill Tips.xlsx`) | Abacus Web Engine | Status |
-| :--- | :--- | :--- | :--- |
-| **Total Tips Distributed** | **$2,118.87** | **$2,118.87** | **✓ 100% Match** |
-| **Total Eligible Hours** | **275.65 hrs** | **275.65 hrs** | **✓ 100% Match** |
-| **Effective Tip Rate** | **$7.69 / hr** | **$7.69 / hr** | **✓ 100% Match** |
-| **Eligible Employees Paid** | **8 Staff** | **8 Staff** | **✓ 100% Match** |
-| **Kitchen Manager Shifts** | **Excluded (2 shifts, 7.69 hrs)** | **Excluded (2 shifts)** | **✓ 100% Match** |
-| **Reconciliation Difference** | **$0.00** | **$0.00** | **✓ Balanced** |
+### 1. Shift Ingestion and Operating Day Rules
+* **Decisive Hours Metric**: Shift calculations strictly utilize each employee's total worked hours (excluding unpaid breaks) as recorded in the time card report. Regular hours and overtime hours are not split for tip distribution purposes.
+* **Business Day Cutoff Hour**: Restaurant operating cycles frequently span past midnight. Shifts starting before the business day cutoff hour (default: 12:00 PM noon) are mapped to the operating date of the previous calendar day.
+* **Role Eligibility**: Each shift is classified as an eligible recipient or an excluded role based on restaurant policy. Non-tipped roles (e.g., Kitchen Manager, Management) are excluded from pool receipt while remaining auditable in shift logs.
 
-### Individual Employee Payouts Audit
+### 2. Contribution Configuration
+The system supports two contribution mechanisms:
+* **Percentage of Tips**: Contributing employees contribute a defined percentage of their collected tips into the daily pool and retain the balance (`Kept Tips = Collected Tips - Contribution`).
+* **Percentage of Sales**: Contributing employees contribute a defined percentage of net sales into the daily pool, deducted from collected tips.
+* **External Order Channels**:
+  * Self-Order Kiosks: Configurable percentage contribution (default 100%).
+  * Online / Web Orders: Configurable percentage contribution.
+  * Table QR Orders: Configurable percentage contribution.
+  * Third-Party Delivery (3PO): Configurable percentage contribution.
 
-| Employee Name | Role | Shifts | Total Hours | Abacus Payout | Source Excel | Audit |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Sally Rodriguez** | Cashier | 10 | 57.85 | **$490.91** | $490.91 | ✓ Match |
-| **Meckenzie Anderson** | Server | 9 | 55.69 | **$430.03** | $430.03 | ✓ Match |
-| **Micaela Hartley** | Cashier | 7 | 43.78 | **$405.95** | $405.95 | ✓ Match |
-| **Lauren Sanders** | Cashier | 9 | 44.86 | **$314.82** | $314.82 | ✓ Match |
-| **Michelle Osnovikov** | Cashier | 6 | 37.22 | **$215.48** | $215.48 | ✓ Match |
-| **Cynthia Rosales Perez** | Cashier / Server | 5 | 23.66 | **$183.16** | $183.16 | ✓ Match |
-| **Natalie Dreyer** | Cashier | 2 | 7.78 | **$63.89** | $63.89 | ✓ Match |
-| **Mikaela Sosa Fuentes** | Server | 1 | 4.81 | **$14.62** | $14.62 | ✓ Match |
+### 3. Distribution Methods
+The daily pool (sum of all shift contributions and external channels for that operating date) is allocated across eligible recipients working on that date using one of three distribution methods:
+
+* **Equally**:
+  * Total Recipient Hours = Sum of hours worked by all eligible recipient roles on the operating date.
+  * Hourly Rate = Daily Pool / Total Recipient Hours.
+  * Employee Pool Share = Shift Hours * Hourly Rate.
+
+* **Percentage**:
+  * Each recipient role is assigned a percentage of the total pool.
+  * Role Bucket = Daily Pool * Role Allocation Percentage.
+  * Role Hourly Rate = Role Bucket / Total Hours worked by employees in that role on that date.
+  * Employee Pool Share = Shift Hours in Role * Role Hourly Rate.
+
+* **Points**:
+  * Each recipient role is assigned a point multiplier per hour (e.g., Server = 2 points, Bartender = 1 point).
+  * Shift Point-Hours = Shift Hours * Role Points.
+  * Total Point-Hours = Sum of Shift Point-Hours across all eligible recipients on that date.
+  * Rate per Point-Hour = Daily Pool / Total Point-Hours.
+  * Employee Pool Share = Shift Hours * Role Points * Rate per Point-Hour.
+
+### 4. Payout Structure
+For each employee across the calculation cycle:
+* `Total Kept Tips = Sum of retained shift tips across the period`
+* `Total Pool Received = Sum of daily pool allocations across the period`
+* `Total Payout = Total Kept Tips + Total Pool Received`
+* `Effective Hourly Rate = Total Payout / Total Hours`
 
 ---
 
-## 🚀 Running Locally
+## Verified Reference Calculations
 
-1. **Install Dependencies**:
+The calculation engine has been verified against historical operating periods:
+
+### Mission Hill Coffee and Creamery (September 7 to September 20, 2026)
+* Structure: Equal hourly distribution across Cashier and Server roles.
+* Cutoff Hour: 12:00 PM.
+* Pool Sources: Web Dashboard and Kiosk collections.
+* Verification Results:
+  * Total Eligible Hours: 275.65 hours (100% match with historical payroll ledger).
+  * Total Tips Distributed: $2,118.87 (100% match with historical payroll ledger).
+  * Reconciliation Discrepancy: $0.00.
+
+| Employee Name | Role | Total Hours | Distributed Tips | Status |
+| :--- | :--- | :---: | :---: | :---: |
+| Sally Rodriguez | Cashier | 57.85 | $490.91 | Verified |
+| Meckenzie Anderson | Server | 55.69 | $430.03 | Verified |
+| Micaela Hartley | Cashier | 43.78 | $405.95 | Verified |
+| Lauren Sanders | Cashier | 44.86 | $314.82 | Verified |
+| Michelle Osnovikov | Cashier | 37.22 | $215.48 | Verified |
+| Cynthia Rosales Perez | Cashier / Server | 23.66 | $183.16 | Verified |
+| Natalie Dreyer | Cashier | 7.78 | $63.89 | Verified |
+| Mikaela Sosa Fuentes | Server | 4.81 | $14.62 | Verified |
+
+---
+
+## Application Structure and Modules
+
+```
+src/
+├── app/
+│   ├── globals.css              # Design tokens, color palette, responsive table utilities
+│   ├── layout.tsx               # Root document structure and metadata
+│   └── page.tsx                 # Main application controller and state orchestrator
+├── components/
+│   ├── CalculationDashboard.tsx # Summary KPIs, cycle totals table, daily breakdown tabs
+│   ├── EmployeeDetailModal.tsx  # Individual employee shift audit modal
+│   ├── LandingHero.tsx          # Application entry view with 3D canvas and action button
+│   ├── SetupPage.tsx            # Tip pool configuration, role rules, and file ingestion
+│   ├── Sidebar.tsx              # Collapsible navigation sidebar and utility actions
+│   └── TimeCardsPage.tsx        # Shift ledger, timezone converter, and shift editor
+├── lib/
+│   ├── calculator.ts            # Tip pooling and distribution calculation engine
+│   ├── missionHillData.ts       # Reference shift and tip datasets for Mission Hill
+│   ├── parser.ts                # Time card parser for Excel and CSV formats
+│   ├── pdfGenerator.ts          # Client-ready PDF export with company branding
+│   ├── pdfLogo.ts               # Embedded base64 company logo
+│   └── testSampleData.ts        # Reference shift and tip datasets for multi-channel pooling
+└── types/
+    └── tips.ts                  # TypeScript interface and type definitions
+```
+
+---
+
+## Client PDF Export
+
+The PDF export module generates client-ready distribution summaries formatted for restaurant operators and accountants:
+* Embedded Header: Company logo and restaurant details.
+* Cycle Summary Table: Employee name, primary role, hours worked, net sales, kept tips, pool share, total payout, and effective hourly rate.
+* Daily Ledger Table: Business date, day of week, collected pool, recipient hours, hourly rate, and total distributed.
+* Page Break Protection: Automatic row-height calculation prevents split table rows across page boundaries.
+* Verification Footer: Standardized audit caption on every page:
+  `"These tips are calculated using the Tip Calculator."`
+* File Naming Convention: `[Restaurant_Name]_[StartDate]_to_[EndDate].pdf`
+
+---
+
+## Local Development and Installation
+
+### Prerequisites
+* Node.js version 18.18 or higher (Node 20+ recommended).
+* npm version 9 or higher.
+
+### Installation Steps
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-username/abacus.git
+   cd abacus
+   ```
+
+2. Install dependencies:
    ```bash
    npm install
    ```
 
-2. **Run Development Server**:
+3. Run the development server:
    ```bash
    npm run dev
    ```
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
+   Access the application at `http://localhost:3000`.
 
-3. **Run Production Build Verification**:
+4. Run the production build verification:
    ```bash
    npm run build
    ```
 
-4. **Run Automated Calculation Audit Test**:
-   ```bash
-   npx tsx src/test_verification.ts
-   ```
+---
+
+## Deployment to Vercel
+
+The application is structured for zero-configuration deployment on Vercel:
+
+1. Push the repository to GitHub.
+2. Log in to your Vercel Dashboard and select **Add New Project**.
+3. Import the `abacus` repository.
+4. Keep standard project settings:
+   * **Framework Preset**: Next.js
+   * **Root Directory**: `./`
+   * **Build Command**: `next build`
+   * **Output Directory**: `.next`
+   * **Install Command**: `npm install`
+5. Click **Deploy**. Vercel will compile the TypeScript codebase, generate optimized server and static assets, and issue a live production URL.
 
 ---
 
-## 🌐 Deploying to Vercel & GitHub
+## License
 
-The repository is fully optimized for GitHub and Vercel:
-
-1. Push this repository to GitHub.
-2. In Vercel, click **Add New Project** and select your repository.
-3. Framework Preset: **Next.js** (detected automatically).
-4. Build Command: `next build` (standard).
-5. Output Directory: `.next` (standard).
-6. Click **Deploy**.
+Private and proprietary. All rights reserved.
