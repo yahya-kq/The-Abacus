@@ -80,6 +80,8 @@ export function calculateTipCycle(
   let cycleTotalRecipientHours = 0;
   let cycleTotalKeptTips = 0;
   let cycleTotalOverallPayout = 0;
+  let cycleTotalGratuity = 0;
+  let cycleTotalDirectTips = 0;
   const excludedRolesSet = new Set<string>();
   let excludedShiftsCount = 0;
 
@@ -217,6 +219,8 @@ export function calculateTipCycle(
         existing.hours += s.totalHours;
         existing.netSale += s.netSale;
         existing.collectedTips += s.collectedTips;
+        existing.directTips = (existing.directTips || 0) + (s.directTips || 0);
+        existing.gratuity = (existing.gratuity || 0) + (s.gratuity || 0);
         existing.contributionAmount += cDetail.contrib;
         existing.keptTips += cDetail.kept;
         existing.poolShare += poolShare;
@@ -230,6 +234,8 @@ export function calculateTipCycle(
           hours: s.totalHours,
           netSale: s.netSale,
           collectedTips: s.collectedTips,
+          directTips: s.directTips || 0,
+          gratuity: s.gratuity || 0,
           contributionAmount: cDetail.contrib,
           keptTips: cDetail.kept,
           poolShare,
@@ -248,6 +254,8 @@ export function calculateTipCycle(
           totalHours: 0,
           totalNetSales: 0,
           totalCollectedTips: 0,
+          totalDirectTips: 0,
+          totalGratuity: 0,
           totalContribution: 0,
           totalKeptTips: 0,
           totalPoolReceived: 0,
@@ -262,11 +270,15 @@ export function calculateTipCycle(
       empSum.totalHours += s.totalHours;
       empSum.totalNetSales += s.netSale;
       empSum.totalCollectedTips += s.collectedTips;
+      empSum.totalDirectTips = (empSum.totalDirectTips || 0) + (s.directTips || 0);
+      empSum.totalGratuity = (empSum.totalGratuity || 0) + (s.gratuity || 0);
       empSum.totalContribution += cDetail.contrib;
       empSum.totalKeptTips += cDetail.kept;
       empSum.totalPoolReceived += poolShare;
       empSum.totalPayout += totalPayout;
       empSum.shiftCount += 1;
+      cycleTotalGratuity += s.gratuity || 0;
+      cycleTotalDirectTips += s.directTips || 0;
     }
 
     const dayEmployeesList = Array.from(dayEmpMap.values()).sort((a, b) =>
@@ -337,6 +349,8 @@ export function calculateTipCycle(
     totalEligibleEmployees: employeeSummaries.length,
     totalShiftsWorked: cycleShifts.length,
     totalKeptTips: Math.round(cycleTotalKeptTips * 100) / 100,
+    totalGratuity: Math.round(cycleTotalGratuity * 100) / 100,
+    totalDirectTips: Math.round(cycleTotalDirectTips * 100) / 100,
     totalOverallPayout: Math.round(cycleTotalOverallPayout * 100) / 100,
     dailyCalculations,
     employeeSummaries,

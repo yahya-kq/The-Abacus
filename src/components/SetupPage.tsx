@@ -23,7 +23,14 @@ import {
   PoolDistributionMethod,
   PoolContributionMethod,
 } from '../types/tips';
-import { parseTimecardFile, parseTimecardCsv, formatDisplayDate, getDayOfWeek } from '../lib/parser';
+import {
+  parseTimecardFile,
+  parseTimecardCsv,
+  parseOtherTipSourceFile,
+  parseOtherTipSourceCsv,
+  formatDisplayDate,
+  getDayOfWeek,
+} from '../lib/parser';
 
 interface SetupPageProps {
   settings: TipPoolSettings;
@@ -35,6 +42,8 @@ interface SetupPageProps {
   onHardRefresh: () => void;
   onRunCalculation: () => void;
   timeCardFileName: string | null;
+  otherTipFileName?: string | null;
+  onOtherTipsLoaded?: (dailyTips: Record<string, DailyTipInput>, filename: string, startDate?: string, endDate?: string) => void;
 }
 
 export function SetupPage({
@@ -47,8 +56,11 @@ export function SetupPage({
   onHardRefresh,
   onRunCalculation,
   timeCardFileName,
+  otherTipFileName,
+  onOtherTipsLoaded,
 }: SetupPageProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const timeCardInputRef = useRef<HTMLInputElement>(null);
+  const otherTipInputRef = useRef<HTMLInputElement>(null);
   const [isManualLocked, setIsManualLocked] = useState(true);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -56,6 +68,62 @@ export function SetupPage({
   const detectedRoles = Array.from(new Set(shifts.map((s) => s.role))).filter(Boolean);
   const defaultRolesList = ['Server', 'Bartender', 'Barista', 'Cashier', 'Host', 'Busser', 'Cook', 'Dishwasher', 'Owner'];
   const allAvailableRoles = Array.from(new Set([...detectedRoles, ...defaultRolesList]));
+
+  // Handle other tip source file upload
+  const handleOtherTipUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadError(null);
+    const fname = file.name;
+    const reader = new FileReader();
+
+    if (fname.endsWith('.csv')) {
+      reader.onload = (evt) => {
+        try {
+          const text = evt.target?.result as string;
+          const parsed = parseOtherTipSourceCsv(text);
+          if (parsed.errors.length > 0 && Object.keys(parsed.dailyTips).length === 0) {
+            setUploadError(parsed.errors.join(', '));
+            return;
+          }
+          if (onOtherTipsLoaded) {
+            onOtherTipsLoaded(
+              parsed.dailyTips,
+              fname,
+              parsed.detectedStartDate,
+              parsed.detectedEndDate
+            );
+          }
+        } catch (err: any) {
+          setUploadError(`Failed to parse CSV: ${err.message}`);
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      reader.onload = (evt) => {
+        try {
+          const buffer = evt.target?.result as ArrayBuffer;
+          const parsed = parseOtherTipSourceFile(buffer);
+          if (parsed.errors.length > 0 && Object.keys(parsed.dailyTips).length === 0) {
+            setUploadError(parsed.errors.join(', '));
+            return;
+          }
+          if (onOtherTipsLoaded) {
+            onOtherTipsLoaded(
+              parsed.dailyTips,
+              fname,
+              parsed.detectedStartDate,
+              parsed.detectedEndDate
+            );
+          }
+        } catch (err: any) {
+          setUploadError(`Failed to parse Excel file: ${err.message}`);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+  };
 
   // Handle file upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -964,10 +1032,10 @@ export function SetupPage({
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <h2 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#ffffff' }}>
-                Time Card & Secondary Tip Sources
+                Time Cards & Other Tip Source
               </h2>
               <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)' }}>
-                Import primary shifts (.xlsx or .csv) and customize external channel tip amounts.
+                Import primary shifts and external tip source files (.xlsx, .xls, .csv).
               </p>
             </div>
 
@@ -993,56 +1061,166 @@ export function SetupPage({
             </div>
           </div>
 
-          {/* Primary Time Card Uploader */}
+          {/* Two Upload Boxes: 1. Time Cards, 2. Other Tip Source */}
           <div
-            onClick={() => fileInputRef.current?.click()}
             style={{
-              border: '2px dashed var(--border-medium)',
-              borderRadius: 'var(--radius-md)',
-              padding: '28px 20px',
-              textAlign: 'center',
-              cursor: 'pointer',
-              background: 'rgba(21, 19, 54, 0.5)',
-              transition: 'all 0.2s ease',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: '16px',
               marginBottom: '20px',
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'var(--accent-primary)';
-              e.currentTarget.style.background = 'rgba(93, 84, 230, 0.08)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'var(--border-medium)';
-              e.currentTarget.style.background = 'rgba(21, 19, 54, 0.5)';
-            }}
           >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              style={{ display: 'none' }}
-              onChange={handleFileUpload}
-            />
+            {/* Box 1: Upload Time Cards */}
             <div
+              onClick={() => timeCardInputRef.current?.click()}
               style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '12px',
-                background: 'rgba(93, 84, 230, 0.2)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#9ca3ff',
-                marginBottom: '10px',
+                border: timeCardFileName ? '1.5px solid rgba(108, 99, 255, 0.5)' : '2px dashed var(--border-medium)',
+                borderRadius: 'var(--radius-md)',
+                padding: '24px 20px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                background: timeCardFileName ? 'rgba(93, 84, 230, 0.1)' : 'rgba(21, 19, 54, 0.5)',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--accent-primary)';
+                e.currentTarget.style.background = 'rgba(93, 84, 230, 0.14)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = timeCardFileName ? 'rgba(108, 99, 255, 0.5)' : 'var(--border-medium)';
+                e.currentTarget.style.background = timeCardFileName ? 'rgba(93, 84, 230, 0.1)' : 'rgba(21, 19, 54, 0.5)';
               }}
             >
-              <Upload size={22} />
+              <input
+                ref={timeCardInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                style={{ display: 'none' }}
+                onChange={handleFileUpload}
+              />
+              <div
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '12px',
+                  background: 'rgba(93, 84, 230, 0.2)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#9ca3ff',
+                  marginBottom: '10px',
+                }}
+              >
+                <FileSpreadsheet size={22} />
+              </div>
+              <p style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.98rem' }}>
+                Upload Time Cards
+              </p>
+              {timeCardFileName ? (
+                <div style={{ marginTop: '8px' }}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      maxWidth: '90%',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      fontSize: '0.8rem',
+                      padding: '3px 10px',
+                      borderRadius: 'var(--radius-pill)',
+                      background: 'rgba(108, 99, 255, 0.25)',
+                      color: '#c5c7e8',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {timeCardFileName}
+                  </span>
+                  <p style={{ color: '#00e5a3', fontSize: '0.8rem', marginTop: '6px', fontWeight: 500 }}>
+                    ✓ {shifts.length} shifts active
+                  </p>
+                </div>
+              ) : (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '6px' }}>
+                  Import shifts, hours, sales, tips & gratuity (.xlsx, .csv)
+                </p>
+              )}
             </div>
-            <p style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.98rem' }}>
-              {timeCardFileName ? `Loaded: ${timeCardFileName}` : 'Click to Upload Time Card (.xlsx, .csv)'}
-            </p>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '4px' }}>
-              {shifts.length > 0 ? `${shifts.length} shifts active across date range` : 'Compatible with standard restaurant shift exports'}
-            </p>
+
+            {/* Box 2: Upload Other Tip Source */}
+            <div
+              onClick={() => otherTipInputRef.current?.click()}
+              style={{
+                border: otherTipFileName ? '1.5px solid rgba(0, 229, 163, 0.5)' : '2px dashed var(--border-medium)',
+                borderRadius: 'var(--radius-md)',
+                padding: '24px 20px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                background: otherTipFileName ? 'rgba(0, 229, 163, 0.08)' : 'rgba(21, 19, 54, 0.5)',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#00e5a3';
+                e.currentTarget.style.background = 'rgba(0, 229, 163, 0.12)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = otherTipFileName ? 'rgba(0, 229, 163, 0.5)' : 'var(--border-medium)';
+                e.currentTarget.style.background = otherTipFileName ? 'rgba(0, 229, 163, 0.08)' : 'rgba(21, 19, 54, 0.5)';
+              }}
+            >
+              <input
+                ref={otherTipInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                style={{ display: 'none' }}
+                onChange={handleOtherTipUpload}
+              />
+              <div
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '12px',
+                  background: 'rgba(0, 229, 163, 0.18)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#00e5a3',
+                  marginBottom: '10px',
+                }}
+              >
+                <Upload size={22} />
+              </div>
+              <p style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.98rem' }}>
+                Upload Other Tip Source
+              </p>
+              {otherTipFileName ? (
+                <div style={{ marginTop: '8px' }}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      maxWidth: '90%',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      fontSize: '0.8rem',
+                      padding: '3px 10px',
+                      borderRadius: 'var(--radius-pill)',
+                      background: 'rgba(0, 229, 163, 0.2)',
+                      color: '#00e5a3',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {otherTipFileName}
+                  </span>
+                  <p style={{ color: '#00e5a3', fontSize: '0.8rem', marginTop: '6px', fontWeight: 500 }}>
+                    ✓ {Object.keys(dailyTipInputs).length} daily records updated
+                  </p>
+                </div>
+              ) : (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '6px' }}>
+                  Import external channel tips (Online, DoorDash, Kiosk, Other)
+                </p>
+              )}
+            </div>
           </div>
 
           {uploadError && (

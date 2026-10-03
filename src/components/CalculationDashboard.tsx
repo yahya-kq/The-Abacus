@@ -162,6 +162,20 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
           </span>
         </div>
 
+        {(result.totalGratuity || 0) > 0 && (
+          <div className="glass-panel" style={{ padding: '20px 22px' }}>
+            <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+              Auto Gratuity
+            </span>
+            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#00e5a3', marginTop: '4px' }}>
+              ${result.totalGratuity?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+              Included in collected tips
+            </span>
+          </div>
+        )}
+
         <div className="glass-panel" style={{ padding: '20px 22px', border: '1.5px solid rgba(108, 99, 255, 0.45)' }}>
           <span style={{ fontSize: '0.76rem', color: '#9ca3ff', fontWeight: 700, textTransform: 'uppercase' }}>
             Total Overall Payout

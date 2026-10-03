@@ -68,8 +68,9 @@ export interface ProcessedShift {
   overtimeHours?: number;
   totalHours: number; // Decisive metric
   netSale: number;
-  collectedTips: number;
-  gratuity: number;
+  collectedTips: number; // Total tips (directTips + gratuity)
+  directTips?: number; // Base credit card / direct tips
+  gratuity: number; // Auto-gratuity / service charge
   calendarDate: string; // YYYY-MM-DD
   businessDate: string; // YYYY-MM-DD
   isEligibleRecipient: boolean;
@@ -96,6 +97,8 @@ export interface EmployeeDailyDetail {
   hours: number;
   netSale: number;
   collectedTips: number;
+  directTips?: number;
+  gratuity?: number;
   contributionAmount: number;
   keptTips: number;
   poolShare: number;
@@ -128,6 +131,8 @@ export interface EmployeeCycleSummary {
   totalHours: number;
   totalNetSales: number;
   totalCollectedTips: number;
+  totalDirectTips?: number;
+  totalGratuity?: number;
   totalContribution: number;
   totalKeptTips: number;
   totalPoolReceived: number;
@@ -151,6 +156,8 @@ export interface CycleCalculationResult {
   totalEligibleEmployees: number;
   totalShiftsWorked: number;
   totalKeptTips: number;
+  totalDirectTips?: number;
+  totalGratuity?: number;
   totalOverallPayout: number;
   dailyCalculations: DailyCalculationResult[];
   employeeSummaries: EmployeeCycleSummary[];
@@ -169,5 +176,12 @@ export interface ParseTimecardResult {
   errors: string[];
   detectedStartDate?: string;
   detectedEndDate?: string;
-  extractedDailyTips: Record<string, number>; // date -> sum of tips
+  extractedDailyTips: Record<string, number>;
+}
+
+export interface ParseOtherTipSourceResult {
+  dailyTips: Record<string, DailyTipInput>;
+  detectedStartDate?: string;
+  detectedEndDate?: string;
+  errors: string[];
 }

@@ -14,8 +14,6 @@ import {
 } from '../types/tips';
 import { calculateTipCycle, generateDateRange } from '../lib/calculator';
 import { formatDisplayDate, getDayOfWeek } from '../lib/parser';
-import { TEST_1_SHIFTS, TEST_1_EXTRACTED_TIPS } from '../lib/testSampleData';
-import { MISSION_HILL_SHIFTS, MISSION_HILL_DAILY_TIPS } from '../lib/missionHillData';
 
 export default function Home() {
   const [currentScreen, setCurrentScreen] = useState<NavScreen>('hero');
@@ -45,9 +43,10 @@ export default function Home() {
     timezone: 'America/New_York',
   });
 
-  // Shifts state
+  // Shifts & Tip Source state
   const [shifts, setShifts] = useState<ProcessedShift[]>([]);
   const [timeCardFileName, setTimeCardFileName] = useState<string | null>(null);
+  const [otherTipFileName, setOtherTipFileName] = useState<string | null>(null);
   const [dailyTipInputs, setDailyTipInputs] = useState<Record<string, DailyTipInput>>({});
 
   // Show temporary toast
@@ -148,10 +147,11 @@ export default function Home() {
     });
   };
 
-  // Hard Refresh (Clear all in-memory data back to clean state as requested in Audio 2)
+  // Hard Refresh (Clear all in-memory data back to clean state as requested)
   const handleHardRefresh = () => {
     setShifts([]);
     setTimeCardFileName(null);
+    setOtherTipFileName(null);
     setDailyTipInputs({});
     setSettings({
       poolName: '',
@@ -174,99 +174,46 @@ export default function Home() {
       businessDayCutoffHour: 12,
       timezone: 'America/New_York',
     });
-    showToast('Hard Refresh Complete: All shifts and temporary inputs cleared.');
+    showToast('Hard Refresh Complete: All shifts, files, and temporary inputs cleared.');
   };
 
-  // Load Mission Hill Dataset
-  const handleLoadMissionHillData = () => {
-    setShifts(MISSION_HILL_SHIFTS);
-    setTimeCardFileName('Mission_Hill_Coffee_&_Creamery_Time_Card_Report_2026-09-07_to_2026-09-20.csv');
-    setSettings({
-      poolName: 'Mission Hill Coffee & Creamery',
-      restaurantName: 'Mission Hill',
-      dateMode: 'range',
-      startDate: '2026-09-07',
-      endDate: '2026-09-20',
-      timePeriod: 'all_day',
-      splitSetup: 'percentage_of_tips',
-      contributors: [],
-      sources: {
-        kiosk: { enabled: true, percent: 100 },
-        online: { enabled: true, percent: 100 },
-        qr: { enabled: false, percent: 100 },
-        thirdParty: { enabled: true, percent: 100, source: 'All' },
-      },
-      distributionMethod: 'Equally',
-      recipients: [
-        { id: 'r-cashier', role: 'Cashier', distributionPercent: 50, pointsPerHour: 1 },
-        { id: 'r-server', role: 'Server', distributionPercent: 50, pointsPerHour: 1 },
-      ],
-      businessDayCutoffHour: 12,
-      timezone: 'America/New_York',
+  // Handle other tip source loaded from file (.xlsx, .csv)
+  const handleOtherTipsLoaded = (
+    loadedDailyTips: Record<string, DailyTipInput>,
+    fname: string,
+    detectedStart?: string,
+    detectedEnd?: string
+  ) => {
+    setOtherTipFileName(fname);
+
+    const updatedSettings = { ...settings };
+    if (!updatedSettings.startDate && detectedStart) updatedSettings.startDate = detectedStart;
+    if (!updatedSettings.endDate && detectedEnd) updatedSettings.endDate = detectedEnd;
+    setSettings(updatedSettings);
+
+    setDailyTipInputs((prev) => {
+      const merged = { ...prev };
+      for (const [date, val] of Object.entries(loadedDailyTips)) {
+        merged[date] = {
+          date,
+          displayDate: val.displayDate || formatDisplayDate(date),
+          dayOfWeek: val.dayOfWeek || getDayOfWeek(date),
+          webDashTips: val.webDashTips || 0,
+          doorDashTips: val.doorDashTips || 0,
+          kioskTips: val.kioskTips || 0,
+          otherTips: val.otherTips || 0,
+          totalTips:
+            val.totalTips ||
+            (val.webDashTips || 0) +
+              (val.doorDashTips || 0) +
+              (val.kioskTips || 0) +
+              (val.otherTips || 0),
+        };
+      }
+      return merged;
     });
 
-    const nextInputs: Record<string, DailyTipInput> = {};
-    for (const [date, val] of Object.entries(MISSION_HILL_DAILY_TIPS)) {
-      nextInputs[date] = {
-        date,
-        displayDate: formatDisplayDate(date),
-        dayOfWeek: getDayOfWeek(date),
-        webDashTips: val.webDashTips || 0,
-        doorDashTips: val.doorDashTips || 0,
-        kioskTips: val.kioskTips || 0,
-        otherTips: 0,
-        totalTips: val.totalTips || 0,
-      };
-    }
-    setDailyTipInputs(nextInputs);
-    showToast('Mission Hill dataset loaded (51 shifts, 275.65 hrs, $2,118.87 tips).');
-  };
-
-  // Quick reload Test-1 Sample Dataset
-  const handleLoadTestData = () => {
-    setShifts(TEST_1_SHIFTS);
-    setTimeCardFileName('tip_pool_calculator_Test-1 1.xlsx');
-    setSettings({
-      poolName: 'Test-1 Tip Pool',
-      restaurantName: 'Test-1 Restaurant',
-      dateMode: 'range',
-      startDate: '2026-09-07',
-      endDate: '2026-09-20',
-      timePeriod: 'all_day',
-      splitSetup: 'percentage_of_tips',
-      contributors: [
-        { id: 'c1', role: 'Summary', contributionPercent: 100, source: 'All' },
-        { id: 'c2', role: 'Kiosk', contributionPercent: 100, source: 'All' },
-      ],
-      sources: {
-        kiosk: { enabled: true, percent: 100 },
-        online: { enabled: true, percent: 100 },
-        qr: { enabled: false, percent: 100 },
-        thirdParty: { enabled: true, percent: 100, source: 'All' },
-      },
-      distributionMethod: 'Equally',
-      recipients: [
-        { id: 'r1', role: 'Barista', distributionPercent: 100, pointsPerHour: 1 },
-      ],
-      businessDayCutoffHour: 12,
-      timezone: 'America/New_York',
-    });
-
-    const nextInputs: Record<string, DailyTipInput> = {};
-    for (const [date, amount] of Object.entries(TEST_1_EXTRACTED_TIPS)) {
-      nextInputs[date] = {
-        date,
-        displayDate: formatDisplayDate(date),
-        dayOfWeek: getDayOfWeek(date),
-        webDashTips: Math.round(amount * 0.7 * 100) / 100,
-        doorDashTips: 0,
-        kioskTips: Math.round(amount * 0.3 * 100) / 100,
-        otherTips: 0,
-        totalTips: amount,
-      };
-    }
-    setDailyTipInputs(nextInputs);
-    showToast('Test-1 Sample Dataset loaded successfully (82 active shifts).');
+    showToast(`Loaded other tip source from ${fname}`);
   };
 
   // Instant Memoized Calculation Result
@@ -334,7 +281,7 @@ export default function Home() {
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               {timeCardFileName && (
                 <span
                   style={{
@@ -346,7 +293,21 @@ export default function Home() {
                     color: '#9ca3ff',
                   }}
                 >
-                  {timeCardFileName}
+                  Time Cards: {timeCardFileName}
+                </span>
+              )}
+              {otherTipFileName && (
+                <span
+                  style={{
+                    fontSize: '0.8rem',
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-pill)',
+                    background: 'rgba(0, 229, 163, 0.15)',
+                    border: '1px solid rgba(0, 229, 163, 0.3)',
+                    color: '#00e5a3',
+                  }}
+                >
+                  Other Tips: {otherTipFileName}
                 </span>
               )}
             </div>
@@ -404,6 +365,8 @@ export default function Home() {
               onHardRefresh={handleHardRefresh}
               onRunCalculation={() => setCurrentScreen('dashboard')}
               timeCardFileName={timeCardFileName}
+              otherTipFileName={otherTipFileName}
+              onOtherTipsLoaded={handleOtherTipsLoaded}
             />
           )}
 

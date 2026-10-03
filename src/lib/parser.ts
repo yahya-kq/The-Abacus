@@ -1,5 +1,11 @@
 import * as XLSX from 'xlsx';
-import { TipPoolSettings, ProcessedShift, ParseTimecardResult } from '../types/tips';
+import {
+  TipPoolSettings,
+  ProcessedShift,
+  ParseTimecardResult,
+  ParseOtherTipSourceResult,
+  DailyTipInput,
+} from '../types/tips';
 
 /**
  * Format a Date object to YYYY-MM-DD in local time
@@ -287,8 +293,9 @@ export function parseTimecardRows(
 
     const payRate = parseFloat(String(row[colIndex.payRate] || '0').replace(/[^\d.-]/g, '')) || 0;
     const netSale = parseFloat(String(row[colIndex.netSale] || '0').replace(/[^\d.-]/g, '')) || 0;
-    const collectedTips = colIndex.tips !== -1 ? (parseFloat(String(row[colIndex.tips] || '0').replace(/[^\d.-]/g, '')) || 0) : 0;
+    const directTips = colIndex.tips !== -1 ? (parseFloat(String(row[colIndex.tips] || '0').replace(/[^\d.-]/g, '')) || 0) : 0;
     const gratuity = colIndex.gratuity !== -1 ? (parseFloat(String(row[colIndex.gratuity] || '0').replace(/[^\d.-]/g, '')) || 0) : 0;
+    const collectedTips = directTips + gratuity;
 
     // If role is Summary or Kiosk, accumulate directly into extracted tips
     if (role.toLowerCase() === 'summary' || role.toLowerCase() === 'kiosk') {
@@ -306,6 +313,7 @@ export function parseTimecardRows(
       totalHours: hours,
       netSale,
       collectedTips,
+      directTips,
       gratuity,
       calendarDate,
       businessDate,
@@ -326,5 +334,161 @@ export function parseTimecardRows(
     detectedStartDate,
     detectedEndDate,
     extractedDailyTips,
+  };
+}
+
+/**
+ * Parse an "Other Tip Source" file (.xlsx, .xls, .csv) into daily tip entries
+ */
+export function parseOtherTipSourceFile(
+  fileData: ArrayBuffer | Uint8Array,
+  referenceYear = 2026
+): ParseOtherTipSourceResult {
+  const workbook = XLSX.read(fileData, { type: 'array' });
+  return parseOtherTipSourceWorkbook(workbook, referenceYear);
+}
+
+export function parseOtherTipSourceCsv(
+  csvText: string,
+  referenceYear = 2026
+): ParseOtherTipSourceResult {
+  const workbook = XLSX.read(csvText, { type: 'string' });
+  return parseOtherTipSourceWorkbook(workbook, referenceYear);
+}
+
+function parseOtherTipSourceWorkbook(
+  workbook: XLSX.WorkBook,
+  referenceYear = 2026
+): ParseOtherTipSourceResult {
+  const dailyTips: Record<string, DailyTipInput> = {};
+  const errors: string[] = [];
+
+  for (const sheetName of workbook.SheetNames) {
+    const ws = workbook.Sheets[sheetName];
+    const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    if (!rows || rows.length === 0) continue;
+
+    // Check if columnar format (Header row with Date, Tips, etc.)
+    let dateCol = -1;
+    let onlineCol = -1;
+    let doordashCol = -1;
+    let kioskCol = -1;
+    let otherCol = -1;
+    let totalCol = -1;
+    let headerRow = -1;
+
+    for (let r = 0; r < Math.min(15, rows.length); r++) {
+      const row = rows[r];
+      if (!Array.isArray(row)) continue;
+      const lowerRow = row.map((c) => String(c).toLowerCase().trim());
+      const dIdx = lowerRow.findIndex((c) => c === 'date' || c.includes('cycle date') || c.includes('shift date'));
+      if (dIdx !== -1) {
+        dateCol = dIdx;
+        headerRow = r;
+        onlineCol = lowerRow.findIndex((c) => c.includes('dash') || c.includes('online') || c.includes('web'));
+        doordashCol = lowerRow.findIndex((c) => c.includes('door') || c.includes('3po') || c.includes('delivery'));
+        kioskCol = lowerRow.findIndex((c) => c.includes('kiosk'));
+        otherCol = lowerRow.findIndex((c) => c.includes('other'));
+        totalCol = lowerRow.findIndex((c) => c.includes('total tip') || c === 'total');
+        break;
+      }
+    }
+
+    if (dateCol !== -1) {
+      for (let r = headerRow + 1; r < rows.length; r++) {
+        const row = rows[r];
+        if (!row || !row[dateCol]) continue;
+        const dVal = row[dateCol];
+        const dateStr = normalizeDate(dVal, referenceYear);
+        if (!dateStr) continue;
+
+        const webDashTips = onlineCol !== -1 ? (parseFloat(String(row[onlineCol]).replace(/[^\d.-]/g, '')) || 0) : 0;
+        const doorDashTips = doordashCol !== -1 ? (parseFloat(String(row[doordashCol]).replace(/[^\d.-]/g, '')) || 0) : 0;
+        const kioskTips = kioskCol !== -1 ? (parseFloat(String(row[kioskCol]).replace(/[^\d.-]/g, '')) || 0) : 0;
+        const otherTips = otherCol !== -1 ? (parseFloat(String(row[otherCol]).replace(/[^\d.-]/g, '')) || 0) : 0;
+        let totalTips = totalCol !== -1 ? (parseFloat(String(row[totalCol]).replace(/[^\d.-]/g, '')) || 0) : 0;
+        if (!totalTips) totalTips = webDashTips + doorDashTips + kioskTips + otherTips;
+
+        dailyTips[dateStr] = {
+          date: dateStr,
+          displayDate: formatDisplayDate(dateStr),
+          dayOfWeek: getDayOfWeek(dateStr),
+          webDashTips,
+          doorDashTips,
+          kioskTips,
+          otherTips,
+          totalTips,
+        };
+      }
+    } else {
+      // Check block-style layout (like Mission Hill Tips where dates are headers and tips are listed underneath)
+      let currentDate = '';
+      for (let r = 0; r < rows.length; r++) {
+        const row = rows[r];
+        if (!row || !Array.isArray(row)) continue;
+
+        // Check for date in early columns
+        for (let c = 0; c < Math.min(5, row.length); c++) {
+          const val = row[c];
+          if (
+            (typeof val === 'number' && val > 40000 && val < 60000) ||
+            (typeof val === 'string' && (/^\d{4}-\d{2}-\d{2}$/.test(val) || /^\d{1,2}-[A-Za-z]{3}$/.test(val)))
+          ) {
+            const parsed = normalizeDate(val, referenceYear);
+            if (parsed) {
+              currentDate = parsed;
+              if (!dailyTips[currentDate]) {
+                dailyTips[currentDate] = {
+                  date: currentDate,
+                  displayDate: formatDisplayDate(currentDate),
+                  dayOfWeek: getDayOfWeek(currentDate),
+                  webDashTips: 0,
+                  doorDashTips: 0,
+                  kioskTips: 0,
+                  otherTips: 0,
+                  totalTips: 0,
+                };
+              }
+            }
+          }
+        }
+
+        // Check for tip line items
+        const line = row.map((x) => String(x).toLowerCase().trim());
+        for (let c = 0; c < line.length; c++) {
+          const cell = line[c];
+          const nextVal = parseFloat(String(row[c + 1] || '0').replace(/[^\d.-]/g, '')) || 0;
+          if (currentDate && dailyTips[currentDate]) {
+            if (cell.includes('dashboard tip') || cell.includes('webdash') || cell === 'online tips') {
+              dailyTips[currentDate].webDashTips = nextVal;
+            } else if (cell.includes('doordash') || cell.includes('3po') || cell.includes('delivery')) {
+              dailyTips[currentDate].doorDashTips = nextVal;
+            } else if (cell.includes('kiosk tip') || cell === 'kiosk') {
+              dailyTips[currentDate].kioskTips = nextVal;
+            } else if (cell === 'total tips' || cell === 'total tip') {
+              dailyTips[currentDate].totalTips = nextVal;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Ensure totalTips is computed if missing
+  for (const d of Object.values(dailyTips)) {
+    if (!d.totalTips) {
+      d.totalTips = (d.webDashTips || 0) + (d.doorDashTips || 0) + (d.kioskTips || 0) + (d.otherTips || 0);
+    }
+  }
+
+  const sortedDates = Object.keys(dailyTips).sort();
+  const detectedStartDate = sortedDates[0];
+  const detectedEndDate = sortedDates[sortedDates.length - 1];
+
+  return {
+    dailyTips,
+    detectedStartDate,
+    detectedEndDate,
+    errors,
   };
 }

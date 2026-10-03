@@ -43,16 +43,17 @@ export function TimeCardsPage({
   const [selectedRole, setSelectedRole] = useState('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // New shift form state
+  // New shift form state (clean slate: dates default to settings or empty)
   const [newShift, setNewShift] = useState({
     employeeName: '',
     role: settings.recipients[0]?.role || 'Server',
-    businessDate: settings.startDate || '2026-09-07',
+    businessDate: settings.startDate || '',
     timeIn: '09:00 AM',
     timeOut: '05:00 PM',
     totalHours: 8,
     netSale: 0,
-    collectedTips: 0,
+    directTips: 0,
+    gratuity: 0,
   });
 
   const allRoles = Array.from(new Set(shifts.map((s) => s.role))).filter(Boolean);
@@ -68,6 +69,7 @@ export function TimeCardsPage({
   const totalHours = filteredShifts.reduce((s, sh) => s + sh.totalHours, 0);
   const totalSales = filteredShifts.reduce((s, sh) => s + sh.netSale, 0);
   const totalTips = filteredShifts.reduce((s, sh) => s + sh.collectedTips, 0);
+  const totalGratuity = filteredShifts.reduce((s, sh) => s + (sh.gratuity || 0), 0);
 
   const handleDeleteShift = (id: string) => {
     onUpdateShifts(shifts.filter((s) => s.id !== id));
@@ -76,6 +78,10 @@ export function TimeCardsPage({
   const handleCreateShift = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newShift.employeeName.trim()) return;
+
+    const direct = Number(newShift.directTips) || 0;
+    const grat = Number(newShift.gratuity) || 0;
+    const collected = direct + grat;
 
     const created: ProcessedShift = {
       id: `manual-shift-${Date.now()}`,
@@ -87,8 +93,9 @@ export function TimeCardsPage({
       timeOut: newShift.timeOut,
       totalHours: Number(newShift.totalHours) || 0,
       netSale: Number(newShift.netSale) || 0,
-      collectedTips: Number(newShift.collectedTips) || 0,
-      gratuity: 0,
+      directTips: direct,
+      gratuity: grat,
+      collectedTips: collected,
       calendarDate: newShift.businessDate,
       businessDate: newShift.businessDate,
       isEligibleRecipient: settings.recipients.some((r) => r.role.toLowerCase() === newShift.role.toLowerCase()),
@@ -100,12 +107,13 @@ export function TimeCardsPage({
     setNewShift({
       employeeName: '',
       role: settings.recipients[0]?.role || 'Server',
-      businessDate: settings.startDate || '2026-09-07',
+      businessDate: settings.startDate || '',
       timeIn: '09:00 AM',
       timeOut: '05:00 PM',
       totalHours: 8,
       netSale: 0,
-      collectedTips: 0,
+      directTips: 0,
+      gratuity: 0,
     });
   };
 
@@ -215,6 +223,17 @@ export function TimeCardsPage({
             ${totalTips.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
+
+        {totalGratuity > 0 && (
+          <div className="glass-panel" style={{ padding: '18px 20px' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+              Auto Gratuity
+            </span>
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#00e5a3', marginTop: '4px' }}>
+              ${totalGratuity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filters Bar */}
@@ -272,7 +291,9 @@ export function TimeCardsPage({
               <th>Out</th>
               <th style={{ textAlign: 'right' }}>Hours</th>
               <th style={{ textAlign: 'right' }}>Net Sales</th>
-              <th style={{ textAlign: 'right' }}>Collected Tips</th>
+              <th style={{ textAlign: 'right' }}>Direct Tips</th>
+              <th style={{ textAlign: 'right' }}>Gratuity</th>
+              <th style={{ textAlign: 'right' }}>Total Tips</th>
               <th>Recipient?</th>
               <th>Actions</th>
             </tr>
@@ -280,7 +301,7 @@ export function TimeCardsPage({
           <tbody>
             {filteredShifts.length === 0 ? (
               <tr>
-                <td colSpan={10} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                <td colSpan={12} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
                   No shifts found matching your filter criteria.
                 </td>
               </tr>
@@ -297,6 +318,12 @@ export function TimeCardsPage({
                   <td style={{ textAlign: 'right', fontWeight: 600 }}>{shift.totalHours.toFixed(2)}</td>
                   <td style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>
                     ${shift.netSale.toFixed(2)}
+                  </td>
+                  <td style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>
+                    ${(shift.directTips !== undefined ? shift.directTips : shift.collectedTips).toFixed(2)}
+                  </td>
+                  <td style={{ textAlign: 'right', color: (shift.gratuity || 0) > 0 ? '#00e5a3' : 'var(--text-muted)' }}>
+                    ${(shift.gratuity || 0).toFixed(2)}
                   </td>
                   <td style={{ textAlign: 'right', fontWeight: 600, color: '#f6c445' }}>
                     ${shift.collectedTips.toFixed(2)}
@@ -447,7 +474,7 @@ export function TimeCardsPage({
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
                     Hours
@@ -476,20 +503,43 @@ export function TimeCardsPage({
                     onChange={(e) => setNewShift({ ...newShift, netSale: parseFloat(e.target.value) || 0 })}
                   />
                 </div>
+              </div>
 
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                    Tips ($)
+                    Direct Tips ($)
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     className="input-clean"
-                    value={newShift.collectedTips}
-                    onChange={(e) => setNewShift({ ...newShift, collectedTips: parseFloat(e.target.value) || 0 })}
+                    value={newShift.directTips}
+                    onChange={(e) => setNewShift({ ...newShift, directTips: parseFloat(e.target.value) || 0 })}
                   />
                 </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                    Auto Gratuity ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="input-clean"
+                    value={newShift.gratuity}
+                    onChange={(e) => setNewShift({ ...newShift, gratuity: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(93, 84, 230, 0.1)', border: '1px solid rgba(108, 99, 255, 0.25)' }}>
+                <span style={{ fontSize: '0.82rem', color: '#c5c7e8' }}>Total Shift Tips:</span>
+                <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#f6c445' }}>
+                  ${((Number(newShift.directTips) || 0) + (Number(newShift.gratuity) || 0)).toFixed(2)}
+                </span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
