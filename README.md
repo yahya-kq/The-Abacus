@@ -53,7 +53,7 @@ For each employee across the calculation cycle:
 
 ## Application Structure and Modules
 
-
+--
 src/
 ├── app/
 │   ├── globals.css              # Design tokens, color palette, responsive table utilities
