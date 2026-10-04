@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { AlertTriangle, RotateCcw } from 'lucide-react';
+import { AlertTriangle, RotateCcw, Sparkles } from 'lucide-react';
 import { Sidebar, NavScreen } from '../components/Sidebar';
 import { LandingHero } from '../components/LandingHero';
 import { SetupPage } from '../components/SetupPage';
@@ -15,12 +15,20 @@ import {
 } from '../types/tips';
 import { calculateTipCycle, generateDateRange } from '../lib/calculator';
 import { formatDisplayDate, getDayOfWeek, parseFileNameMetadata } from '../lib/parser';
+import {
+  DEMO_SETTINGS,
+  DEMO_SHIFTS,
+  DEMO_DAILY_TIPS,
+  DEMO_TIME_CARD_FILENAME,
+  DEMO_OTHER_TIP_FILENAME,
+} from '../lib/demoData';
 
 export default function Home() {
   const [currentScreen, setCurrentScreen] = useState<NavScreen>('hero');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isHardRefreshModalOpen, setIsHardRefreshModalOpen] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   // Pool Settings state (Clean slate: user sets up restaurant, cycle dates, and rules)
   const [settings, setSettings] = useState<TipPoolSettings>({
@@ -165,6 +173,7 @@ export default function Home() {
 
   // Hard Refresh (Clear all in-memory data back to clean state as requested)
   const handleHardRefresh = () => {
+    setIsDemoMode(false);
     setShifts([]);
     setTimeCardFileName(null);
     setOtherTipFileName(null);
@@ -191,6 +200,25 @@ export default function Home() {
       timezone: 'America/New_York',
     });
     showToast('Hard Refresh Complete: All shifts, files, and temporary inputs cleared.');
+  };
+
+  // Launch Client Demo Mode with full Mission Hill Coffee & Creamery dataset
+  const handleStartDemoMode = () => {
+    setIsDemoMode(true);
+    setSettings(DEMO_SETTINGS);
+    setShifts(DEMO_SHIFTS);
+    setDailyTipInputs(DEMO_DAILY_TIPS);
+    setTimeCardFileName(DEMO_TIME_CARD_FILENAME);
+    setOtherTipFileName(DEMO_OTHER_TIP_FILENAME);
+    setCurrentScreen('dashboard');
+    showToast('Demo Mode Activated: Loaded Mission Hill Coffee & Creamery sample dataset.');
+  };
+
+  // Exit Client Demo Mode and return to clean landing page
+  const handleExitDemoMode = () => {
+    handleHardRefresh();
+    setCurrentScreen('hero');
+    showToast('Exited Demo Mode.');
   };
 
   const requestHardRefresh = () => {
@@ -312,6 +340,43 @@ export default function Home() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {isDemoMode && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '4px 12px',
+                    borderRadius: 'var(--radius-pill)',
+                    background: 'rgba(0, 229, 163, 0.12)',
+                    border: '1px solid rgba(0, 229, 163, 0.4)',
+                    color: '#00e5a3',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  <Sparkles size={13} />
+                  <span>Client Demo Mode</span>
+                  <button
+                    onClick={handleExitDemoMode}
+                    type="button"
+                    style={{
+                      background: 'rgba(255, 95, 109, 0.2)',
+                      border: '1px solid rgba(255, 95, 109, 0.4)',
+                      color: '#ff9c9c',
+                      borderRadius: 'var(--radius-pill)',
+                      padding: '2px 8px',
+                      fontSize: '0.72rem',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      marginLeft: '4px',
+                    }}
+                    title="Exit demo mode and start fresh"
+                  >
+                    Exit Demo
+                  </button>
+                </div>
+              )}
               {timeCardFileName && (
                 <span
                   style={{
@@ -381,7 +446,10 @@ export default function Home() {
         {/* Dynamic Screen Rendering */}
         <main style={{ flex: 1, minHeight: currentScreen === 'hero' ? '100vh' : 'calc(100vh - 60px)' }}>
           {currentScreen === 'hero' && (
-            <LandingHero onStart={() => setCurrentScreen('setup')} />
+            <LandingHero
+              onStart={() => setCurrentScreen('setup')}
+              onViewDemo={handleStartDemoMode}
+            />
           )}
 
           {currentScreen === 'setup' && (

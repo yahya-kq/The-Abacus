@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useRef, useEffect, useState } from 'react';
-import { ArrowRight } from 'lucide-react';
+import React, { useRef, useEffect } from 'react';
+import { ArrowRight, Eye } from 'lucide-react';
 
 interface LandingHeroProps {
   onStart: () => void;
+  onViewDemo?: () => void;
 }
 
-export function LandingHero({ onStart }: LandingHeroProps) {
+export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // 3D Automated Calculator Canvas Engine
@@ -79,10 +80,9 @@ export function LandingHero({ onStart }: LandingHeroProps) {
       ['0', '.', 'AUTO', '='],
     ];
 
-    let rotX = 0.38;
-    let rotY = -0.32;
-    let targetRotX = 0.38;
-    let targetRotY = -0.32;
+    // Stable, fixed isometric 3D perspective (no mouse tilt distortion)
+    const rotX = 0.34;
+    const rotY = -0.28;
     let time = 0;
 
     const render = () => {
@@ -102,12 +102,8 @@ export function LandingHero({ onStart }: LandingHeroProps) {
       }
       keyHighlightIntensity = Math.max(0.2, keyHighlightIntensity - 0.015);
 
-      // Smooth inertia rotation & mouse tracking
-      rotX += (targetRotX - rotX) * 0.05;
-      rotY += (targetRotY - rotY) * 0.05;
-
-      // Bobbing floating height
-      const bobY = Math.sin(time * 0.03) * 12;
+      // Subtle, gentle floating bobbing height
+      const bobY = Math.sin(time * 0.02) * 8;
 
       // 3D Matrix Helpers
       const cosY = Math.cos(rotY);
@@ -445,21 +441,9 @@ export function LandingHero({ onStart }: LandingHeroProps) {
 
     render();
 
-    // Mouse movement interaction for 3D perspective tilt
-    const handleCanvasMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      const nx = (e.clientX - rect.left) / rect.width - 0.5;
-      const ny = (e.clientY - rect.top) / rect.height - 0.5;
-      targetRotY = -0.32 + nx * 0.8;
-      targetRotX = 0.38 - ny * 0.6;
-    };
-
-    window.addEventListener('mousemove', handleCanvasMouseMove);
-
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
-      window.removeEventListener('mousemove', handleCanvasMouseMove);
     };
   }, []);
 
@@ -517,6 +501,45 @@ export function LandingHero({ onStart }: LandingHeroProps) {
             Tip Calculator
           </span>
         </div>
+
+        {/* View Demo Button in Top Right (as requested with screenshot) */}
+        {onViewDemo && (
+          <button
+            id="view-demo-btn"
+            onClick={onViewDemo}
+            type="button"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 20px',
+              borderRadius: '9999px',
+              background: 'rgba(108, 99, 255, 0.18)',
+              border: '1px solid rgba(108, 99, 255, 0.45)',
+              color: '#ffffff',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              backdropFilter: 'blur(8px)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(108, 99, 255, 0.32)';
+              e.currentTarget.style.borderColor = 'var(--accent-primary)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(108, 99, 255, 0.35)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(108, 99, 255, 0.18)';
+              e.currentTarget.style.borderColor = 'rgba(108, 99, 255, 0.45)';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            <Eye size={16} color="#00e5a3" />
+            <span>View Demo</span>
+          </button>
+        )}
       </div>
 
       {/* Main Split Hero Grid */}
@@ -664,23 +687,6 @@ export function LandingHero({ onStart }: LandingHeroProps) {
             }}
           />
         </div>
-      </div>
-
-      {/* Bottom Subtle Indicator (Cleaned of Version 1.0) */}
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '1400px',
-          margin: '0 auto',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          fontSize: '0.8rem',
-          color: '#8e91be',
-          zIndex: 20,
-        }}
-      >
-        <span>Deterministic Multi-Unit Allocation</span>
       </div>
     </div>
   );
