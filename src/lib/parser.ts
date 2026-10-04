@@ -492,3 +492,51 @@ function parseOtherTipSourceWorkbook(
     errors,
   };
 }
+
+/**
+ * Extract restaurant name and cycle date range (startDate, endDate) from the file name.
+ * e.g. "Mission_Hill_Coffee_&_Creamery_Time_Card_Report_2026-09-07_to_2026-09-20.csv"
+ * -> restaurantName: "Mission Hill Coffee & Creamery"
+ * -> startDate: "2026-09-07"
+ * -> endDate: "2026-09-20"
+ */
+export function parseFileNameMetadata(fileName: string): {
+  restaurantName?: string;
+  startDate?: string;
+  endDate?: string;
+} {
+  if (!fileName) return {};
+
+  const baseName = fileName.replace(/\.[^/.]+$/, '');
+  let startDate: string | undefined;
+  let endDate: string | undefined;
+  let namePart = baseName;
+
+  // Match ISO YYYY-MM-DD to YYYY-MM-DD (e.g. 2026-09-07_to_2026-09-20 or 2026-09-07 to 2026-09-20)
+  const isoMatch = baseName.match(/(\d{4}-\d{2}-\d{2})[_\s]+(?:to|-)[_\s]+(\d{4}-\d{2}-\d{2})/i);
+  if (isoMatch) {
+    startDate = isoMatch[1];
+    endDate = isoMatch[2];
+    namePart = baseName.substring(0, isoMatch.index);
+  } else {
+    // Match US formats: MM-DD-YYYY or MM.DD.YYYY
+    const usMatch = baseName.match(/(\d{2})[-_.](\d{2})[-_.](\d{4})[_\s]+(?:to|-)[_\s]+(\d{2})[-_.](\d{2})[-_.](\d{4})/i);
+    if (usMatch) {
+      startDate = `${usMatch[3]}-${usMatch[1]}-${usMatch[2]}`;
+      endDate = `${usMatch[6]}-${usMatch[4]}-${usMatch[5]}`;
+      namePart = baseName.substring(0, usMatch.index);
+    }
+  }
+
+  // Clean name part: remove common descriptors like Time_Card_Report, Time_Cards, Timecard, Report, etc.
+  namePart = namePart
+    .replace(/[_\s]*(?:time[_\s]*card(?:s)?[_\s]*report|time[_\s]*cards?|timecard(?:s)?|report|shift(?:s)?)[_\s]*/gi, ' ')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const restaurantName = namePart.length > 1 ? namePart : undefined;
+
+  return { restaurantName, startDate, endDate };
+}
+

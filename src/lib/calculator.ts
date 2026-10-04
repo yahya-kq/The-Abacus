@@ -193,16 +193,44 @@ export function calculateTipCycle(
           roleHoursMap.set(rLower, (roleHoursMap.get(rLower) || 0) + s.totalHours);
         });
 
+        // Determine total configured percentage of roles that actually worked shifts today
+        let activeRolesConfiguredPct = 0;
+        roleHoursMap.forEach((hours, rLower) => {
+          if (hours > 0) {
+            const rRule = recipientMap.get(rLower);
+            activeRolesConfiguredPct += (rRule?.distributionPercent || 0);
+          }
+        });
+
         recipientShifts.forEach((s) => {
           const rLower = s.role.toLowerCase();
           const rRule = recipientMap.get(rLower);
-          const rPct = (rRule?.distributionPercent || 0) / 100;
-          const rolePool = totalDayPool * rPct;
+          const rConfigPct = rRule?.distributionPercent || 0;
+
+          // Re-normalize active roles so 100% of the daily pool is distributed even if some roles are absent/took leave
+          const effectivePct = activeRolesConfiguredPct > 0
+            ? (rConfigPct / activeRolesConfiguredPct)
+            : (dayTotalRecipientHours > 0 ? (s.totalHours / dayTotalRecipientHours) : 0);
+
+          const rolePool = totalDayPool * effectivePct;
           const rTotalHours = roleHoursMap.get(rLower) || 0;
           const roleRate = rTotalHours > 0 ? rolePool / rTotalHours : 0;
           const share = Math.round(s.totalHours * roleRate * 100) / 100;
           shiftPoolShare.set(s.id, share);
         });
+
+        // Cent reconciliation: ensure distributed pool exactly balances totalDayPool
+        let sumShiftShares = 0;
+        let firstShiftId = '';
+        recipientShifts.forEach((s) => {
+          sumShiftShares += shiftPoolShare.get(s.id) || 0;
+          if (!firstShiftId) firstShiftId = s.id;
+        });
+        const diffCents = Math.round((totalDayPool - sumShiftShares) * 100) / 100;
+        if (Math.abs(diffCents) > 0 && Math.abs(diffCents) < 0.10 && firstShiftId) {
+          const cur = shiftPoolShare.get(firstShiftId) || 0;
+          shiftPoolShare.set(firstShiftId, Math.max(0, Math.round((cur + diffCents) * 100) / 100));
+        }
       }
     }
 

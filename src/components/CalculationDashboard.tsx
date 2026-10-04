@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Download,
   Calendar,
@@ -12,6 +12,8 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   RotateCcw,
   Sparkles,
 } from 'lucide-react';
@@ -29,17 +31,38 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
   const [activeTab, setActiveTab] = useState<'cycle' | 'daily'>('cycle');
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeCycleSummary | null>(null);
   const [expandedDate, setExpandedDate] = useState<string | null>(result.dailyCalculations[0]?.date || null);
   const [isExporting, setIsExporting] = useState(false);
 
   const allRoles = Array.from(new Set(result.employeeSummaries.map((e) => e.role))).filter(Boolean);
 
-  const filteredEmployees = result.employeeSummaries.filter((emp) => {
-    const matchesSearch = emp.employeeName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'ALL' || emp.role.toLowerCase() === roleFilter.toLowerCase();
-    return matchesSearch && matchesRole;
-  });
+  const filteredEmployees = useMemo(() => {
+    return result.employeeSummaries.filter((emp) => {
+      const matchesSearch = emp.employeeName.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesRole = roleFilter === 'ALL' || emp.role.toLowerCase() === roleFilter.toLowerCase();
+      return matchesSearch && matchesRole;
+    });
+  }, [result.employeeSummaries, searchTerm, roleFilter]);
+
+  const totalPages = Math.ceil(filteredEmployees.length / pageSize) || 1;
+  const paginatedEmployees = useMemo(() => {
+    if (pageSize >= 1000) return filteredEmployees;
+    const start = (currentPage - 1) * pageSize;
+    return filteredEmployees.slice(start, start + pageSize);
+  }, [filteredEmployees, currentPage, pageSize]);
+
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
+    setCurrentPage(1);
+  };
+
+  const handleRoleFilterChange = (val: string) => {
+    setRoleFilter(val);
+    setCurrentPage(1);
+  };
 
   const handleExportPDF = () => {
     setIsExporting(true);
@@ -247,7 +270,7 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
                 className="input-clean"
                 placeholder="Search employee by name..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 style={{ paddingLeft: '38px' }}
               />
             </div>
@@ -257,7 +280,7 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
               <select
                 className="input-clean"
                 value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
+                onChange={(e) => handleRoleFilterChange(e.target.value)}
                 style={{ minWidth: '150px' }}
               >
                 <option value="ALL" style={{ background: '#151336' }}>All Roles</option>
@@ -299,13 +322,15 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
                     </td>
                   </tr>
                 )}
-                {filteredEmployees.map((emp, idx) => (
+                {paginatedEmployees.map((emp, idx) => (
                   <tr
                     key={emp.employeeName}
                     onClick={() => setSelectedEmployee(emp)}
                     style={{ cursor: 'pointer' }}
                   >
-                    <td style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>{idx + 1}</td>
+                    <td style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>
+                      {(currentPage - 1) * pageSize + idx + 1}
+                    </td>
                     <td style={{ fontWeight: 600, color: '#ffffff' }}>{emp.employeeName}</td>
                     <td>
                       <span className="badge badge-indigo">{emp.role}</span>
@@ -351,6 +376,103 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
                 </tr>
               </tfoot>
             </table>
+          </div>
+
+          {/* Pagination Bar */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              background: 'rgba(21, 19, 54, 0.6)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-md)',
+              marginTop: '12px',
+              flexWrap: 'wrap',
+              gap: '12px',
+            }}
+          >
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Showing{' '}
+              <strong style={{ color: '#ffffff' }}>
+                {filteredEmployees.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}
+              </strong>{' '}
+              to{' '}
+              <strong style={{ color: '#ffffff' }}>
+                {Math.min(currentPage * pageSize, filteredEmployees.length)}
+              </strong>{' '}
+              of <strong style={{ color: '#00e5a3' }}>{filteredEmployees.length}</strong> employees
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Per Page:</span>
+                <select
+                  className="input-clean"
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  style={{ padding: '4px 10px', fontSize: '0.82rem' }}
+                >
+                  <option value={25} style={{ background: '#151336' }}>25</option>
+                  <option value={50} style={{ background: '#151336' }}>50</option>
+                  <option value={100} style={{ background: '#151336' }}>100</option>
+                  <option value={250} style={{ background: '#151336' }}>250</option>
+                  <option value={5000} style={{ background: '#151336' }}>All</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                  type="button"
+                  style={{
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border-subtle)',
+                    color: currentPage <= 1 ? 'var(--text-dim)' : '#ffffff',
+                    padding: '6px 10px',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: currentPage <= 1 ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.82rem',
+                  }}
+                >
+                  <ChevronLeft size={14} />
+                  <span>Prev</span>
+                </button>
+
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', padding: '0 4px' }}>
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                  type="button"
+                  style={{
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border-subtle)',
+                    color: currentPage >= totalPages ? 'var(--text-dim)' : '#ffffff',
+                    padding: '6px 10px',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.82rem',
+                  }}
+                >
+                  <span>Next</span>
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

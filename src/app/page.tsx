@@ -14,7 +14,7 @@ import {
   CycleCalculationResult,
 } from '../types/tips';
 import { calculateTipCycle, generateDateRange } from '../lib/calculator';
-import { formatDisplayDate, getDayOfWeek } from '../lib/parser';
+import { formatDisplayDate, getDayOfWeek, parseFileNameMetadata } from '../lib/parser';
 
 export default function Home() {
   const [currentScreen, setCurrentScreen] = useState<NavScreen>('hero');
@@ -92,14 +92,28 @@ export default function Home() {
     fname: string,
     extractedTips?: Record<string, number>,
     detectedStart?: string,
-    detectedEnd?: string
+    detectedEnd?: string,
+    detectedRestaurant?: string
   ) => {
     setShifts(loadedShifts);
     setTimeCardFileName(fname);
 
+    // Auto-extract metadata from file name (e.g. Mission_Hill_Coffee_&_Creamery_Time_Card_Report_2026-09-07_to_2026-09-20.csv)
+    const fileMeta = parseFileNameMetadata(fname);
+
     const updatedSettings = { ...settings };
-    if (detectedStart) updatedSettings.startDate = detectedStart;
-    if (detectedEnd) updatedSettings.endDate = detectedEnd;
+    const finalRestaurant = detectedRestaurant || fileMeta.restaurantName;
+    const finalStart = detectedStart || fileMeta.startDate;
+    const finalEnd = detectedEnd || fileMeta.endDate;
+
+    if (finalRestaurant) {
+      updatedSettings.restaurantName = finalRestaurant;
+      if (!updatedSettings.poolName) {
+        updatedSettings.poolName = `${finalRestaurant} Tip Pool`;
+      }
+    }
+    if (finalStart) updatedSettings.startDate = finalStart;
+    if (finalEnd) updatedSettings.endDate = finalEnd;
     setSettings(updatedSettings);
 
     if (extractedTips && Object.keys(extractedTips).length > 0) {
@@ -188,13 +202,23 @@ export default function Home() {
     loadedDailyTips: Record<string, DailyTipInput>,
     fname: string,
     detectedStart?: string,
-    detectedEnd?: string
+    detectedEnd?: string,
+    detectedRestaurant?: string
   ) => {
     setOtherTipFileName(fname);
 
+    const fileMeta = parseFileNameMetadata(fname);
     const updatedSettings = { ...settings };
-    if (!updatedSettings.startDate && detectedStart) updatedSettings.startDate = detectedStart;
-    if (!updatedSettings.endDate && detectedEnd) updatedSettings.endDate = detectedEnd;
+    const finalStart = detectedStart || fileMeta.startDate;
+    const finalEnd = detectedEnd || fileMeta.endDate;
+    const finalRestaurant = detectedRestaurant || fileMeta.restaurantName;
+
+    if (!updatedSettings.startDate && finalStart) updatedSettings.startDate = finalStart;
+    if (!updatedSettings.endDate && finalEnd) updatedSettings.endDate = finalEnd;
+    if (!updatedSettings.restaurantName && finalRestaurant) {
+      updatedSettings.restaurantName = finalRestaurant;
+      if (!updatedSettings.poolName) updatedSettings.poolName = `${finalRestaurant} Tip Pool`;
+    }
     setSettings(updatedSettings);
 
     setDailyTipInputs((prev) => {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Clock,
   Search,
@@ -12,6 +12,8 @@ import {
   UserPlus,
   X,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { ProcessedShift, TipPoolSettings } from '../types/tips';
 import { formatDisplayDate } from '../lib/parser';
@@ -42,6 +44,8 @@ export function TimeCardsPage({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(50);
 
   // New shift form state (clean slate: dates default to settings or empty)
   const [newShift, setNewShift] = useState({
@@ -58,18 +62,38 @@ export function TimeCardsPage({
 
   const allRoles = Array.from(new Set(shifts.map((s) => s.role))).filter(Boolean);
 
-  // Filter shifts
-  const filteredShifts = shifts.filter((s) => {
-    const matchesSearch = s.employeeName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = selectedRole === 'ALL' || s.role.toLowerCase() === selectedRole.toLowerCase();
-    return matchesSearch && matchesRole;
-  });
+  // Fast memoized shift filtering for high capacity (thousands of shifts)
+  const filteredShifts = useMemo(() => {
+    return shifts.filter((s) => {
+      const matchesSearch = s.employeeName.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesRole = selectedRole === 'ALL' || s.role.toLowerCase() === selectedRole.toLowerCase();
+      return matchesSearch && matchesRole;
+    });
+  }, [shifts, searchTerm, selectedRole]);
 
-  // KPI aggregates
-  const totalHours = filteredShifts.reduce((s, sh) => s + sh.totalHours, 0);
-  const totalSales = filteredShifts.reduce((s, sh) => s + sh.netSale, 0);
-  const totalTips = filteredShifts.reduce((s, sh) => s + sh.collectedTips, 0);
-  const totalGratuity = filteredShifts.reduce((s, sh) => s + (sh.gratuity || 0), 0);
+  const totalPages = Math.ceil(filteredShifts.length / pageSize) || 1;
+  const paginatedShifts = useMemo(() => {
+    if (pageSize >= 1000) return filteredShifts;
+    const start = (currentPage - 1) * pageSize;
+    return filteredShifts.slice(start, start + pageSize);
+  }, [filteredShifts, currentPage, pageSize]);
+
+  // Reset to page 1 on filter/search change
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
+    setCurrentPage(1);
+  };
+
+  const handleRoleFilterChange = (val: string) => {
+    setSelectedRole(val);
+    setCurrentPage(1);
+  };
+
+  // KPI aggregates (calculated across all matching shifts)
+  const totalHours = useMemo(() => filteredShifts.reduce((s, sh) => s + sh.totalHours, 0), [filteredShifts]);
+  const totalSales = useMemo(() => filteredShifts.reduce((s, sh) => s + sh.netSale, 0), [filteredShifts]);
+  const totalTips = useMemo(() => filteredShifts.reduce((s, sh) => s + sh.collectedTips, 0), [filteredShifts]);
+  const totalGratuity = useMemo(() => filteredShifts.reduce((s, sh) => s + (sh.gratuity || 0), 0), [filteredShifts]);
 
   const handleDeleteShift = (id: string) => {
     onUpdateShifts(shifts.filter((s) => s.id !== id));
@@ -256,7 +280,7 @@ export function TimeCardsPage({
             className="input-clean filter-input-hover"
             placeholder="Search employee by name..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             style={{ paddingLeft: '38px' }}
           />
         </div>
@@ -266,7 +290,7 @@ export function TimeCardsPage({
           <select
             className="input-clean filter-input-hover"
             value={selectedRole}
-            onChange={(e) => setSelectedRole(e.target.value)}
+            onChange={(e) => handleRoleFilterChange(e.target.value)}
             style={{ minWidth: '150px' }}
           >
             <option value="ALL" style={{ background: '#151336' }}>All Roles ({shifts.length})</option>
@@ -299,14 +323,14 @@ export function TimeCardsPage({
             </tr>
           </thead>
           <tbody>
-            {filteredShifts.length === 0 ? (
+            {paginatedShifts.length === 0 ? (
               <tr>
                 <td colSpan={12} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
                   No shifts found matching your filter criteria.
                 </td>
               </tr>
             ) : (
-              filteredShifts.map((shift) => (
+              paginatedShifts.map((shift) => (
                 <tr key={shift.id}>
                   <td style={{ fontWeight: 600, color: '#ffffff' }}>{shift.employeeName}</td>
                   <td>
@@ -358,6 +382,103 @@ export function TimeCardsPage({
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination Bar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 16px',
+          background: 'rgba(21, 19, 54, 0.6)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-md)',
+          marginTop: '12px',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}
+      >
+        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+          Showing{' '}
+          <strong style={{ color: '#ffffff' }}>
+            {filteredShifts.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}
+          </strong>{' '}
+          to{' '}
+          <strong style={{ color: '#ffffff' }}>
+            {Math.min(currentPage * pageSize, filteredShifts.length)}
+          </strong>{' '}
+          of <strong style={{ color: '#00e5a3' }}>{filteredShifts.length}</strong> shifts
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Per Page:</span>
+            <select
+              className="input-clean"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              style={{ padding: '4px 10px', fontSize: '0.82rem' }}
+            >
+              <option value={25} style={{ background: '#151336' }}>25</option>
+              <option value={50} style={{ background: '#151336' }}>50</option>
+              <option value={100} style={{ background: '#151336' }}>100</option>
+              <option value={250} style={{ background: '#151336' }}>250</option>
+              <option value={5000} style={{ background: '#151336' }}>All</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              type="button"
+              style={{
+                background: 'var(--bg-input)',
+                border: '1px solid var(--border-subtle)',
+                color: currentPage <= 1 ? 'var(--text-dim)' : '#ffffff',
+                padding: '6px 10px',
+                borderRadius: 'var(--radius-sm)',
+                cursor: currentPage <= 1 ? 'not-allowed' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '0.82rem',
+              }}
+            >
+              <ChevronLeft size={14} />
+              <span>Prev</span>
+            </button>
+
+            <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', padding: '0 4px' }}>
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              type="button"
+              style={{
+                background: 'var(--bg-input)',
+                border: '1px solid var(--border-subtle)',
+                color: currentPage >= totalPages ? 'var(--text-dim)' : '#ffffff',
+                padding: '6px 10px',
+                borderRadius: 'var(--radius-sm)',
+                cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '0.82rem',
+              }}
+            >
+              <span>Next</span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Add Shift Modal */}

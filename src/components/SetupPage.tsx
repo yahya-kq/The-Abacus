@@ -30,20 +30,21 @@ import {
   parseOtherTipSourceCsv,
   formatDisplayDate,
   getDayOfWeek,
+  parseFileNameMetadata,
 } from '../lib/parser';
 
 interface SetupPageProps {
   settings: TipPoolSettings;
   onUpdateSettings: (newSettings: TipPoolSettings) => void;
   shifts: ProcessedShift[];
-  onShiftsLoaded: (shifts: ProcessedShift[], filename: string, extractedTips?: Record<string, number>, startDate?: string, endDate?: string) => void;
+  onShiftsLoaded: (shifts: ProcessedShift[], filename: string, extractedTips?: Record<string, number>, startDate?: string, endDate?: string, restaurantName?: string) => void;
   dailyTipInputs: Record<string, DailyTipInput>;
   onDailyInputChange: (date: string, field: keyof DailyTipInput, value: number) => void;
   onHardRefresh: () => void;
   onRunCalculation: () => void;
   timeCardFileName: string | null;
   otherTipFileName?: string | null;
-  onOtherTipsLoaded?: (dailyTips: Record<string, DailyTipInput>, filename: string, startDate?: string, endDate?: string) => void;
+  onOtherTipsLoaded?: (dailyTips: Record<string, DailyTipInput>, filename: string, startDate?: string, endDate?: string, restaurantName?: string) => void;
 }
 
 export function SetupPage({
@@ -87,12 +88,14 @@ export function SetupPage({
             setUploadError(parsed.errors.join(', '));
             return;
           }
+          const fileMeta = parseFileNameMetadata(fname);
           if (onOtherTipsLoaded) {
             onOtherTipsLoaded(
               parsed.dailyTips,
               fname,
-              parsed.detectedStartDate,
-              parsed.detectedEndDate
+              fileMeta.startDate || parsed.detectedStartDate,
+              fileMeta.endDate || parsed.detectedEndDate,
+              fileMeta.restaurantName
             );
           }
         } catch (err: any) {
@@ -109,12 +112,14 @@ export function SetupPage({
             setUploadError(parsed.errors.join(', '));
             return;
           }
+          const fileMeta = parseFileNameMetadata(fname);
           if (onOtherTipsLoaded) {
             onOtherTipsLoaded(
               parsed.dailyTips,
               fname,
-              parsed.detectedStartDate,
-              parsed.detectedEndDate
+              fileMeta.startDate || parsed.detectedStartDate,
+              fileMeta.endDate || parsed.detectedEndDate,
+              fileMeta.restaurantName
             );
           }
         } catch (err: any) {
@@ -132,6 +137,7 @@ export function SetupPage({
 
     setUploadError(null);
     const fname = file.name;
+    const fileMeta = parseFileNameMetadata(fname);
     const reader = new FileReader();
 
     if (fname.endsWith('.csv')) {
@@ -143,19 +149,39 @@ export function SetupPage({
             setUploadError(parsed.errors.join(', '));
             return;
           }
+          const detectedStart = fileMeta.startDate || parsed.detectedStartDate;
+          const detectedEnd = fileMeta.endDate || parsed.detectedEndDate;
+          const detectedRestaurant = fileMeta.restaurantName;
+
           onShiftsLoaded(
             parsed.shifts,
             fname,
             parsed.extractedDailyTips,
-            parsed.detectedStartDate,
-            parsed.detectedEndDate
+            detectedStart,
+            detectedEnd,
+            detectedRestaurant
           );
 
           // Auto-fetch roles from time cards if contributors or recipients are currently empty
           const newRoles = Array.from(new Set(parsed.shifts.map((s) => s.role))).filter(Boolean);
+          const updatedSettings = { ...settings };
+          let changed = false;
+
+          if (detectedRestaurant) {
+            updatedSettings.restaurantName = detectedRestaurant;
+            if (!updatedSettings.poolName) updatedSettings.poolName = `${detectedRestaurant} Tip Pool`;
+            changed = true;
+          }
+          if (detectedStart) {
+            updatedSettings.startDate = detectedStart;
+            changed = true;
+          }
+          if (detectedEnd) {
+            updatedSettings.endDate = detectedEnd;
+            changed = true;
+          }
+
           if (newRoles.length > 0) {
-            const updatedSettings = { ...settings };
-            let changed = false;
             if (updatedSettings.contributors.length === 0) {
               updatedSettings.contributors = newRoles.map((r, i) => ({
                 id: `contrib-${Date.now()}-${i}`,
@@ -175,9 +201,9 @@ export function SetupPage({
               }));
               changed = true;
             }
-            if (changed) {
-              onUpdateSettings(updatedSettings);
-            }
+          }
+          if (changed) {
+            onUpdateSettings(updatedSettings);
           }
         } catch (err: any) {
           setUploadError(`Failed to parse CSV: ${err.message}`);
@@ -193,19 +219,39 @@ export function SetupPage({
             setUploadError(parsed.errors.join(', '));
             return;
           }
+          const detectedStart = fileMeta.startDate || parsed.detectedStartDate;
+          const detectedEnd = fileMeta.endDate || parsed.detectedEndDate;
+          const detectedRestaurant = fileMeta.restaurantName;
+
           onShiftsLoaded(
             parsed.shifts,
             fname,
             parsed.extractedDailyTips,
-            parsed.detectedStartDate,
-            parsed.detectedEndDate
+            detectedStart,
+            detectedEnd,
+            detectedRestaurant
           );
 
           // Auto-fetch roles from time cards if contributors or recipients are currently empty
           const newRoles = Array.from(new Set(parsed.shifts.map((s) => s.role))).filter(Boolean);
+          const updatedSettings = { ...settings };
+          let changed = false;
+
+          if (detectedRestaurant) {
+            updatedSettings.restaurantName = detectedRestaurant;
+            if (!updatedSettings.poolName) updatedSettings.poolName = `${detectedRestaurant} Tip Pool`;
+            changed = true;
+          }
+          if (detectedStart) {
+            updatedSettings.startDate = detectedStart;
+            changed = true;
+          }
+          if (detectedEnd) {
+            updatedSettings.endDate = detectedEnd;
+            changed = true;
+          }
+
           if (newRoles.length > 0) {
-            const updatedSettings = { ...settings };
-            let changed = false;
             if (updatedSettings.contributors.length === 0) {
               updatedSettings.contributors = newRoles.map((r, i) => ({
                 id: `contrib-${Date.now()}-${i}`,
@@ -225,9 +271,9 @@ export function SetupPage({
               }));
               changed = true;
             }
-            if (changed) {
-              onUpdateSettings(updatedSettings);
-            }
+          }
+          if (changed) {
+            onUpdateSettings(updatedSettings);
           }
         } catch (err: any) {
           setUploadError(`Failed to parse Excel file: ${err.message}`);
