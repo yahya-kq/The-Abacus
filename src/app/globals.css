@@ -138,6 +138,23 @@ select.input-clean {
   cursor: pointer;
 }
 
+/* Date picker click cursor and calendar icon illumination */
+input[type="date"].input-clean {
+  cursor: pointer;
+}
+
+input[type="date"].input-clean::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.85);
+  opacity: 0.75;
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+input[type="date"].input-clean::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  filter: invert(1);
+}
+
 /* Primary Button */
 .btn-primary {
   display: inline-flex;

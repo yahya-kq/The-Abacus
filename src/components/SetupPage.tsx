@@ -348,13 +348,33 @@ export function SetupPage({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {/* SECTION 1: Tip Cycle & Restaurant Info */}
         <div className="glass-panel" style={{ padding: '24px' }}>
-          <h2 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#ffffff', marginBottom: '16px' }}>
-            Tip Cycle Setup
-          </h2>
+          <div style={{ marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#ffffff' }}>
+              Tip Cycle Setup
+            </h2>
+            <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+              Configure restaurant identity and tip cycle calculation period dates.
+            </p>
+          </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap: '18px',
+              alignItems: 'flex-start',
+            }}
+          >
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '0.85rem',
+                  fontWeight: 500,
+                  color: 'var(--text-secondary)',
+                  marginBottom: '8px',
+                }}
+              >
                 Restaurant Name
               </label>
               <input
@@ -363,42 +383,345 @@ export function SetupPage({
                 value={settings.restaurantName}
                 placeholder="Enter restaurant name..."
                 onChange={(e) => onUpdateSettings({ ...settings, restaurantName: e.target.value })}
+                style={{ height: '42px' }}
               />
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                Tip Cycle Period
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '0.85rem',
+                  fontWeight: 500,
+                  color: 'var(--text-secondary)',
+                  marginBottom: '8px',
+                }}
+              >
+                Start Date
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
-                    Start Date
-                  </span>
-                  <input
-                    type="date"
-                    className="input-clean"
-                    value={settings.startDate}
-                    onChange={(e) => onUpdateSettings({ ...settings, startDate: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
-                    End Date
-                  </span>
-                  <input
-                    type="date"
-                    className="input-clean"
-                    value={settings.endDate}
-                    onChange={(e) => onUpdateSettings({ ...settings, endDate: e.target.value })}
-                  />
-                </div>
-              </div>
+              <input
+                type="date"
+                className="input-clean"
+                value={settings.startDate}
+                onChange={(e) => onUpdateSettings({ ...settings, startDate: e.target.value })}
+                onClick={(e) => {
+                  try {
+                    e.currentTarget.showPicker?.();
+                  } catch {}
+                }}
+                style={{ height: '42px', cursor: 'pointer' }}
+              />
+            </div>
+
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '0.85rem',
+                  fontWeight: 500,
+                  color: 'var(--text-secondary)',
+                  marginBottom: '8px',
+                }}
+              >
+                End Date
+              </label>
+              <input
+                type="date"
+                className="input-clean"
+                value={settings.endDate}
+                onChange={(e) => onUpdateSettings({ ...settings, endDate: e.target.value })}
+                onClick={(e) => {
+                  try {
+                    e.currentTarget.showPicker?.();
+                  } catch {}
+                }}
+                style={{ height: '42px', cursor: 'pointer' }}
+              />
             </div>
           </div>
         </div>
 
-        {/* SECTION 2: Contributor info */}
+        {/* SECTION 2: Data Sources & Time Card Ingestion */}
+        <div className="glass-panel" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#ffffff' }}>
+                Time Cards & Other Tip Source
+              </h2>
+              <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)' }}>
+                Import primary shifts and external tip source files (.xlsx, .xls, .csv).
+              </p>
+            </div>
+
+            {/* Manual Override Lock/Unlock Switch */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 14px',
+                borderRadius: 'var(--radius-pill)',
+                background: isManualLocked ? 'rgba(139, 142, 222, 0.1)' : 'rgba(0, 229, 163, 0.14)',
+                border: isManualLocked ? '1px solid var(--border-subtle)' : '1px solid rgba(0, 229, 163, 0.4)',
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+              onClick={() => setIsManualLocked(!isManualLocked)}
+            >
+              {isManualLocked ? <Lock size={15} color="#8e91be" /> : <Unlock size={15} color="#00e5a3" />}
+              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: isManualLocked ? '#c5c7e8' : '#00e5a3' }}>
+                {isManualLocked ? 'Inputs Locked' : 'Manual Override Active'}
+              </span>
+            </div>
+          </div>
+
+          {/* Two Upload Boxes: 1. Time Cards, 2. Other Tip Source */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: '16px',
+              marginBottom: '20px',
+            }}
+          >
+            {/* Box 1: Upload Time Cards */}
+            <div
+              onClick={() => timeCardInputRef.current?.click()}
+              style={{
+                border: timeCardFileName ? '1.5px solid rgba(108, 99, 255, 0.5)' : '2px dashed var(--border-medium)',
+                borderRadius: 'var(--radius-md)',
+                padding: '24px 20px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                background: timeCardFileName ? 'rgba(93, 84, 230, 0.1)' : 'rgba(21, 19, 54, 0.5)',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--accent-primary)';
+                e.currentTarget.style.background = 'rgba(93, 84, 230, 0.14)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = timeCardFileName ? 'rgba(108, 99, 255, 0.5)' : 'var(--border-medium)';
+                e.currentTarget.style.background = timeCardFileName ? 'rgba(93, 84, 230, 0.1)' : 'rgba(21, 19, 54, 0.5)';
+              }}
+            >
+              <input
+                ref={timeCardInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                style={{ display: 'none' }}
+                onChange={handleFileUpload}
+              />
+              <div
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '12px',
+                  background: 'rgba(93, 84, 230, 0.2)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#9ca3ff',
+                  marginBottom: '10px',
+                }}
+              >
+                <FileSpreadsheet size={22} />
+              </div>
+              <p style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.98rem' }}>
+                Upload Time Cards
+              </p>
+              {timeCardFileName ? (
+                <div style={{ marginTop: '8px' }}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      maxWidth: '90%',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      fontSize: '0.8rem',
+                      padding: '3px 10px',
+                      borderRadius: 'var(--radius-pill)',
+                      background: 'rgba(108, 99, 255, 0.25)',
+                      color: '#c5c7e8',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {timeCardFileName}
+                  </span>
+                  <p style={{ color: '#00e5a3', fontSize: '0.8rem', marginTop: '6px', fontWeight: 500 }}>
+                    ✓ {shifts.length} shifts active
+                  </p>
+                </div>
+              ) : (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '6px' }}>
+                  Import shifts, hours, sales, tips & gratuity (.xlsx, .csv)
+                </p>
+              )}
+            </div>
+
+            {/* Box 2: Upload Other Tip Source */}
+            <div
+              onClick={() => otherTipInputRef.current?.click()}
+              style={{
+                border: otherTipFileName ? '1.5px solid rgba(0, 229, 163, 0.5)' : '2px dashed var(--border-medium)',
+                borderRadius: 'var(--radius-md)',
+                padding: '24px 20px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                background: otherTipFileName ? 'rgba(0, 229, 163, 0.08)' : 'rgba(21, 19, 54, 0.5)',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#00e5a3';
+                e.currentTarget.style.background = 'rgba(0, 229, 163, 0.12)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = otherTipFileName ? 'rgba(0, 229, 163, 0.5)' : 'var(--border-medium)';
+                e.currentTarget.style.background = otherTipFileName ? 'rgba(0, 229, 163, 0.08)' : 'rgba(21, 19, 54, 0.5)';
+              }}
+            >
+              <input
+                ref={otherTipInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                style={{ display: 'none' }}
+                onChange={handleOtherTipUpload}
+              />
+              <div
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '12px',
+                  background: 'rgba(0, 229, 163, 0.18)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#00e5a3',
+                  marginBottom: '10px',
+                }}
+              >
+                <Upload size={22} />
+              </div>
+              <p style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.98rem' }}>
+                Upload Other Tip Source
+              </p>
+              {otherTipFileName ? (
+                <div style={{ marginTop: '8px' }}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      maxWidth: '90%',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      fontSize: '0.8rem',
+                      padding: '3px 10px',
+                      borderRadius: 'var(--radius-pill)',
+                      background: 'rgba(0, 229, 163, 0.2)',
+                      color: '#00e5a3',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {otherTipFileName}
+                  </span>
+                  <p style={{ color: '#00e5a3', fontSize: '0.8rem', marginTop: '6px', fontWeight: 500 }}>
+                    ✓ {Object.keys(dailyTipInputs).length} daily records updated
+                  </p>
+                </div>
+              ) : (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '6px' }}>
+                  Import external channel tips (Online, DoorDash, Kiosk, Other)
+                </p>
+              )}
+            </div>
+          </div>
+
+          {uploadError && (
+            <div style={{ padding: '12px', borderRadius: '8px', background: 'rgba(255, 95, 109, 0.15)', color: '#ff5f6d', fontSize: '0.85rem', marginBottom: '16px' }}>
+              {uploadError}
+            </div>
+          )}
+
+          {/* Daily Tip Source Table (Interactive when unlocked) */}
+          <div style={{ marginTop: '16px' }}>
+            <h3 style={{ fontSize: '0.92rem', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
+              External Daily Tip Pool Entries
+            </h3>
+            <div className="data-table-container" style={{ maxHeight: '300px' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Day</th>
+                    <th>Online ($)</th>
+                    <th>3PO ($)</th>
+                    <th>Kiosk ($)</th>
+                    <th>Other ($)</th>
+                    <th style={{ textAlign: 'right' }}>Total Input Tips</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.values(dailyTipInputs).map((d) => (
+                    <tr key={d.date}>
+                      <td style={{ fontWeight: 600 }}>{formatDisplayDate(d.date)}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{d.dayOfWeek}</td>
+                      <td>
+                        <input
+                          type="number"
+                          step="0.01"
+                          disabled={isManualLocked}
+                          className="input-clean"
+                          style={{ padding: '4px 8px', width: '100px', fontSize: '0.85rem' }}
+                          value={d.webDashTips || 0}
+                          onChange={(e) => onDailyInputChange(d.date, 'webDashTips', parseFloat(e.target.value) || 0)}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          step="0.01"
+                          disabled={isManualLocked}
+                          className="input-clean"
+                          style={{ padding: '4px 8px', width: '100px', fontSize: '0.85rem' }}
+                          value={d.doorDashTips || 0}
+                          onChange={(e) => onDailyInputChange(d.date, 'doorDashTips', parseFloat(e.target.value) || 0)}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          step="0.01"
+                          disabled={isManualLocked}
+                          className="input-clean"
+                          style={{ padding: '4px 8px', width: '100px', fontSize: '0.85rem' }}
+                          value={d.kioskTips || 0}
+                          onChange={(e) => onDailyInputChange(d.date, 'kioskTips', parseFloat(e.target.value) || 0)}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          step="0.01"
+                          disabled={isManualLocked}
+                          className="input-clean"
+                          style={{ padding: '4px 8px', width: '100px', fontSize: '0.85rem' }}
+                          value={d.otherTips || 0}
+                          onChange={(e) => onDailyInputChange(d.date, 'otherTips', parseFloat(e.target.value) || 0)}
+                        />
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: '#00e5a3' }}>
+                        ${((d.webDashTips || 0) + (d.doorDashTips || 0) + (d.kioskTips || 0) + (d.otherTips || 0)).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* SECTION 3: Contributor info */}
         <div className="glass-panel" style={{ padding: '24px' }}>
           <h2 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
             Contributor info
@@ -845,7 +1168,7 @@ export function SetupPage({
           </div>
         </div>
 
-        {/* SECTION 3: Tips distribution */}
+        {/* SECTION 4: Tips distribution */}
         <div className="glass-panel" style={{ padding: '24px' }}>
           <h2 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
             Tips distribution
@@ -1027,285 +1350,6 @@ export function SetupPage({
           </button>
         </div>
 
-        {/* SECTION 5: Data Sources & Time Card Ingestion */}
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-            <div>
-              <h2 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#ffffff' }}>
-                Time Cards & Other Tip Source
-              </h2>
-              <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)' }}>
-                Import primary shifts and external tip source files (.xlsx, .xls, .csv).
-              </p>
-            </div>
-
-            {/* Manual Override Lock/Unlock Switch */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '6px 14px',
-                borderRadius: 'var(--radius-pill)',
-                background: isManualLocked ? 'rgba(139, 142, 222, 0.1)' : 'rgba(0, 229, 163, 0.14)',
-                border: isManualLocked ? '1px solid var(--border-subtle)' : '1px solid rgba(0, 229, 163, 0.4)',
-                cursor: 'pointer',
-                userSelect: 'none',
-              }}
-              onClick={() => setIsManualLocked(!isManualLocked)}
-            >
-              {isManualLocked ? <Lock size={15} color="#8e91be" /> : <Unlock size={15} color="#00e5a3" />}
-              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: isManualLocked ? '#c5c7e8' : '#00e5a3' }}>
-                {isManualLocked ? 'Inputs Locked' : 'Manual Override Active'}
-              </span>
-            </div>
-          </div>
-
-          {/* Two Upload Boxes: 1. Time Cards, 2. Other Tip Source */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: '16px',
-              marginBottom: '20px',
-            }}
-          >
-            {/* Box 1: Upload Time Cards */}
-            <div
-              onClick={() => timeCardInputRef.current?.click()}
-              style={{
-                border: timeCardFileName ? '1.5px solid rgba(108, 99, 255, 0.5)' : '2px dashed var(--border-medium)',
-                borderRadius: 'var(--radius-md)',
-                padding: '24px 20px',
-                textAlign: 'center',
-                cursor: 'pointer',
-                background: timeCardFileName ? 'rgba(93, 84, 230, 0.1)' : 'rgba(21, 19, 54, 0.5)',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'var(--accent-primary)';
-                e.currentTarget.style.background = 'rgba(93, 84, 230, 0.14)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = timeCardFileName ? 'rgba(108, 99, 255, 0.5)' : 'var(--border-medium)';
-                e.currentTarget.style.background = timeCardFileName ? 'rgba(93, 84, 230, 0.1)' : 'rgba(21, 19, 54, 0.5)';
-              }}
-            >
-              <input
-                ref={timeCardInputRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                style={{ display: 'none' }}
-                onChange={handleFileUpload}
-              />
-              <div
-                style={{
-                  width: '46px',
-                  height: '46px',
-                  borderRadius: '12px',
-                  background: 'rgba(93, 84, 230, 0.2)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#9ca3ff',
-                  marginBottom: '10px',
-                }}
-              >
-                <FileSpreadsheet size={22} />
-              </div>
-              <p style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.98rem' }}>
-                Upload Time Cards
-              </p>
-              {timeCardFileName ? (
-                <div style={{ marginTop: '8px' }}>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      maxWidth: '90%',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      fontSize: '0.8rem',
-                      padding: '3px 10px',
-                      borderRadius: 'var(--radius-pill)',
-                      background: 'rgba(108, 99, 255, 0.25)',
-                      color: '#c5c7e8',
-                      fontWeight: 500,
-                    }}
-                  >
-                    {timeCardFileName}
-                  </span>
-                  <p style={{ color: '#00e5a3', fontSize: '0.8rem', marginTop: '6px', fontWeight: 500 }}>
-                    ✓ {shifts.length} shifts active
-                  </p>
-                </div>
-              ) : (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '6px' }}>
-                  Import shifts, hours, sales, tips & gratuity (.xlsx, .csv)
-                </p>
-              )}
-            </div>
-
-            {/* Box 2: Upload Other Tip Source */}
-            <div
-              onClick={() => otherTipInputRef.current?.click()}
-              style={{
-                border: otherTipFileName ? '1.5px solid rgba(0, 229, 163, 0.5)' : '2px dashed var(--border-medium)',
-                borderRadius: 'var(--radius-md)',
-                padding: '24px 20px',
-                textAlign: 'center',
-                cursor: 'pointer',
-                background: otherTipFileName ? 'rgba(0, 229, 163, 0.08)' : 'rgba(21, 19, 54, 0.5)',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#00e5a3';
-                e.currentTarget.style.background = 'rgba(0, 229, 163, 0.12)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = otherTipFileName ? 'rgba(0, 229, 163, 0.5)' : 'var(--border-medium)';
-                e.currentTarget.style.background = otherTipFileName ? 'rgba(0, 229, 163, 0.08)' : 'rgba(21, 19, 54, 0.5)';
-              }}
-            >
-              <input
-                ref={otherTipInputRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                style={{ display: 'none' }}
-                onChange={handleOtherTipUpload}
-              />
-              <div
-                style={{
-                  width: '46px',
-                  height: '46px',
-                  borderRadius: '12px',
-                  background: 'rgba(0, 229, 163, 0.18)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#00e5a3',
-                  marginBottom: '10px',
-                }}
-              >
-                <Upload size={22} />
-              </div>
-              <p style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.98rem' }}>
-                Upload Other Tip Source
-              </p>
-              {otherTipFileName ? (
-                <div style={{ marginTop: '8px' }}>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      maxWidth: '90%',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      fontSize: '0.8rem',
-                      padding: '3px 10px',
-                      borderRadius: 'var(--radius-pill)',
-                      background: 'rgba(0, 229, 163, 0.2)',
-                      color: '#00e5a3',
-                      fontWeight: 500,
-                    }}
-                  >
-                    {otherTipFileName}
-                  </span>
-                  <p style={{ color: '#00e5a3', fontSize: '0.8rem', marginTop: '6px', fontWeight: 500 }}>
-                    ✓ {Object.keys(dailyTipInputs).length} daily records updated
-                  </p>
-                </div>
-              ) : (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '6px' }}>
-                  Import external channel tips (Online, DoorDash, Kiosk, Other)
-                </p>
-              )}
-            </div>
-          </div>
-
-          {uploadError && (
-            <div style={{ padding: '12px', borderRadius: '8px', background: 'rgba(255, 95, 109, 0.15)', color: '#ff5f6d', fontSize: '0.85rem', marginBottom: '16px' }}>
-              {uploadError}
-            </div>
-          )}
-
-          {/* Daily Tip Source Table (Interactive when unlocked) */}
-          <div style={{ marginTop: '16px' }}>
-            <h3 style={{ fontSize: '0.92rem', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
-              External Daily Tip Pool Entries
-            </h3>
-            <div className="data-table-container" style={{ maxHeight: '300px' }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Day</th>
-                    <th>Online ($)</th>
-                    <th>3PO ($)</th>
-                    <th>Kiosk ($)</th>
-                    <th>Other ($)</th>
-                    <th style={{ textAlign: 'right' }}>Total Input Tips</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.values(dailyTipInputs).map((d) => (
-                    <tr key={d.date}>
-                      <td style={{ fontWeight: 600 }}>{formatDisplayDate(d.date)}</td>
-                      <td style={{ color: 'var(--text-muted)' }}>{d.dayOfWeek}</td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          disabled={isManualLocked}
-                          className="input-clean"
-                          style={{ padding: '4px 8px', width: '100px', fontSize: '0.85rem' }}
-                          value={d.webDashTips || 0}
-                          onChange={(e) => onDailyInputChange(d.date, 'webDashTips', parseFloat(e.target.value) || 0)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          disabled={isManualLocked}
-                          className="input-clean"
-                          style={{ padding: '4px 8px', width: '100px', fontSize: '0.85rem' }}
-                          value={d.doorDashTips || 0}
-                          onChange={(e) => onDailyInputChange(d.date, 'doorDashTips', parseFloat(e.target.value) || 0)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          disabled={isManualLocked}
-                          className="input-clean"
-                          style={{ padding: '4px 8px', width: '100px', fontSize: '0.85rem' }}
-                          value={d.kioskTips || 0}
-                          onChange={(e) => onDailyInputChange(d.date, 'kioskTips', parseFloat(e.target.value) || 0)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          disabled={isManualLocked}
-                          className="input-clean"
-                          style={{ padding: '4px 8px', width: '100px', fontSize: '0.85rem' }}
-                          value={d.otherTips || 0}
-                          onChange={(e) => onDailyInputChange(d.date, 'otherTips', parseFloat(e.target.value) || 0)}
-                        />
-                      </td>
-                      <td style={{ textAlign: 'right', fontWeight: 700, color: '#00e5a3' }}>
-                        ${((d.webDashTips || 0) + (d.doorDashTips || 0) + (d.kioskTips || 0) + (d.otherTips || 0)).toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
       {/* Datalist for fast role auto-complete while preserving free text typing */}
       <datalist id="all-available-roles">
         {allAvailableRoles.map((r) => (

@@ -42,7 +42,7 @@ export function Sidebar({
     },
     {
       id: 'dashboard' as NavScreen,
-      label: '📊 Calculation Dashboard',
+      label: 'Calculation Dashboard',
       icon: BarChart3,
       badge: null,
     },
