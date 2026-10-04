@@ -83,6 +83,7 @@ export default function Home() {
             displayDate: formatDisplayDate(d),
             dayOfWeek: getDayOfWeek(d),
             webDashTips: 0,
+            onlineTips: 0,
             doorDashTips: 0,
             kioskTips: 0,
             otherTips: 0,
@@ -128,15 +129,22 @@ export default function Home() {
       setDailyTipInputs((prev) => {
         const next = { ...prev };
         for (const [date, amount] of Object.entries(extractedTips)) {
-          next[date] = {
+          const roundedAmount = Math.round(amount * 100) / 100;
+          const existing = next[date] || {
             date,
             displayDate: formatDisplayDate(date),
             dayOfWeek: getDayOfWeek(date),
-            webDashTips: Math.round(amount * 0.7 * 100) / 100,
+            webDashTips: 0,
+            onlineTips: 0,
             doorDashTips: 0,
-            kioskTips: Math.round(amount * 0.3 * 100) / 100,
+            kioskTips: 0,
             otherTips: 0,
-            totalTips: amount,
+            totalTips: 0,
+          };
+          next[date] = {
+            ...existing,
+            webDashTips: roundedAmount,
+            totalTips: Math.round((roundedAmount + (existing.onlineTips || 0) + (existing.doorDashTips || 0) + (existing.kioskTips || 0) + (existing.otherTips || 0)) * 100) / 100,
           };
         }
         return next;
@@ -154,6 +162,7 @@ export default function Home() {
         displayDate: formatDisplayDate(date),
         dayOfWeek: getDayOfWeek(date),
         webDashTips: 0,
+        onlineTips: 0,
         doorDashTips: 0,
         kioskTips: 0,
         otherTips: 0,
@@ -161,17 +170,19 @@ export default function Home() {
       };
 
       const updated = { ...current, [field]: value };
-      updated.totalTips =
+      updated.totalTips = Math.round((
         (updated.webDashTips || 0) +
+        (updated.onlineTips || 0) +
         (updated.doorDashTips || 0) +
         (updated.kioskTips || 0) +
-        (updated.otherTips || 0);
+        (updated.otherTips || 0)
+      ) * 100) / 100;
 
       return { ...prev, [date]: updated };
     });
   };
 
-  // Hard Refresh (Clear all in-memory data back to clean state as requested)
+  // Hard Refresh (Irreversible Permanent Purge of state, browser storage, and file inputs)
   const handleHardRefresh = () => {
     setIsDemoMode(false);
     setShifts([]);
@@ -199,7 +210,30 @@ export default function Home() {
       businessDayCutoffHour: 12,
       timezone: 'America/New_York',
     });
-    showToast('Hard Refresh Complete: All shifts, files, and temporary inputs cleared.');
+
+    // Clear browser storage
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage?.clear();
+        window.sessionStorage?.clear();
+      } catch (e) {
+        console.error('Error clearing storage:', e);
+      }
+    }
+
+    // Clear all DOM file inputs so selecting the same file triggers a fresh upload
+    if (typeof document !== 'undefined') {
+      try {
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+        fileInputs.forEach((input) => {
+          (input as HTMLInputElement).value = '';
+        });
+      } catch (e) {
+        console.error('Error resetting file inputs:', e);
+      }
+    }
+
+    showToast('System Cleared: All files, shifts, and data have been permanently deleted.');
   };
 
   // Launch Client Demo Mode with clean, fully empty workspace
@@ -304,20 +338,30 @@ export default function Home() {
     setDailyTipInputs((prev) => {
       const merged = { ...prev };
       for (const [date, val] of Object.entries(loadedDailyTips)) {
-        merged[date] = {
+        const existing = merged[date] || {
           date,
           displayDate: val.displayDate || formatDisplayDate(date),
           dayOfWeek: val.dayOfWeek || getDayOfWeek(date),
-          webDashTips: val.webDashTips || 0,
-          doorDashTips: val.doorDashTips || 0,
-          kioskTips: val.kioskTips || 0,
-          otherTips: val.otherTips || 0,
-          totalTips:
-            val.totalTips ||
-            (val.webDashTips || 0) +
-              (val.doorDashTips || 0) +
-              (val.kioskTips || 0) +
-              (val.otherTips || 0),
+          webDashTips: 0,
+          onlineTips: 0,
+          doorDashTips: 0,
+          kioskTips: 0,
+          otherTips: 0,
+          totalTips: 0,
+        };
+        const webDash = val.webDashTips !== undefined && val.webDashTips > 0 ? val.webDashTips : (existing.webDashTips || 0);
+        const online = val.onlineTips !== undefined && val.onlineTips > 0 ? val.onlineTips : (existing.onlineTips || 0);
+        const doorDash = val.doorDashTips !== undefined && val.doorDashTips > 0 ? val.doorDashTips : (existing.doorDashTips || 0);
+        const kiosk = val.kioskTips !== undefined && val.kioskTips > 0 ? val.kioskTips : (existing.kioskTips || 0);
+        const other = val.otherTips !== undefined && val.otherTips > 0 ? val.otherTips : (existing.otherTips || 0);
+        merged[date] = {
+          ...existing,
+          webDashTips: webDash,
+          onlineTips: online,
+          doorDashTips: doorDash,
+          kioskTips: kiosk,
+          otherTips: other,
+          totalTips: Math.round((webDash + online + doorDash + kiosk + other) * 100) / 100,
         };
       }
       return merged;
@@ -556,10 +600,10 @@ export default function Home() {
               </div>
               <div>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#ffffff', margin: 0 }}>
-                  Confirm Hard Refresh
+                  Permanent System Reset
                 </h3>
                 <p style={{ fontSize: '0.88rem', color: '#c5c7e8', marginTop: '6px', lineHeight: 1.5 }}>
-                  Performing a hard refresh will permanently clear all imported time cards, shift records, other tip sources, and reset your setup back to clean defaults.
+                  Performing a hard refresh will permanently delete all imported timecards, shift records, tip data, and browser cache, resetting the system back to clean defaults.
                 </p>
               </div>
             </div>
@@ -579,7 +623,7 @@ export default function Home() {
                 gap: '8px',
               }}
             >
-              <span>⚠️ This action cannot be undone. Are you sure you want to clear everything?</span>
+              <span>⚠️ This action is irreversible. All files, shifts, and data will be permanently wiped.</span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
@@ -611,7 +655,7 @@ export default function Home() {
                 }}
               >
                 <RotateCcw size={15} />
-                <span>Yes, Clear Everything</span>
+                <span>Permanently Delete All</span>
               </button>
             </div>
           </div>

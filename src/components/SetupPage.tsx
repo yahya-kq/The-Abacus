@@ -28,6 +28,8 @@ import {
   parseTimecardCsv,
   parseOtherTipSourceFile,
   parseOtherTipSourceCsv,
+  parseOtherTipSourceText,
+  parseOtherTipSourceImage,
   formatDisplayDate,
   getDayOfWeek,
   parseFileNameMetadata,
@@ -70,14 +72,75 @@ export function SetupPage({
   const defaultRolesList = ['Server', 'Bartender', 'Barista', 'Cashier', 'Host', 'Busser', 'Cook', 'Dishwasher', 'Owner'];
   const allAvailableRoles = Array.from(new Set([...detectedRoles, ...defaultRolesList]));
 
-  // Handle other tip source file upload
+  const [isOcrLoading, setIsOcrLoading] = useState(false);
+
+  // Handle other tip source file upload (Excel, CSV, Text, or Screenshot Images)
   const handleOtherTipUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploadError(null);
     const fname = file.name;
+    const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|bmp|tiff?)$/i.test(fname);
+    const isText = fname.endsWith('.txt') || fname.endsWith('.tsv');
+
+    // Handle Image / Screenshot OCR upload
+    if (isImage) {
+      setIsOcrLoading(true);
+      parseOtherTipSourceImage(file)
+        .then((parsed) => {
+          if (parsed.errors.length > 0 && Object.keys(parsed.dailyTips).length === 0) {
+            setUploadError(parsed.errors.join(', '));
+            return;
+          }
+          const fileMeta = parseFileNameMetadata(fname);
+          if (onOtherTipsLoaded) {
+            onOtherTipsLoaded(
+              parsed.dailyTips,
+              fname,
+              fileMeta.startDate || parsed.detectedStartDate,
+              fileMeta.endDate || parsed.detectedEndDate,
+              fileMeta.restaurantName
+            );
+          }
+        })
+        .catch((err: any) => {
+          setUploadError(`Failed to process screenshot with OCR: ${err.message}`);
+        })
+        .finally(() => {
+          setIsOcrLoading(false);
+        });
+      return;
+    }
+
     const reader = new FileReader();
+
+    if (isText) {
+      reader.onload = (evt) => {
+        try {
+          const text = evt.target?.result as string;
+          const parsed = parseOtherTipSourceText(text);
+          if (parsed.errors.length > 0 && Object.keys(parsed.dailyTips).length === 0) {
+            setUploadError(parsed.errors.join(', '));
+            return;
+          }
+          const fileMeta = parseFileNameMetadata(fname);
+          if (onOtherTipsLoaded) {
+            onOtherTipsLoaded(
+              parsed.dailyTips,
+              fname,
+              fileMeta.startDate || parsed.detectedStartDate,
+              fileMeta.endDate || parsed.detectedEndDate,
+              fileMeta.restaurantName
+            );
+          }
+        } catch (err: any) {
+          setUploadError(`Failed to parse text file: ${err.message}`);
+        }
+      };
+      reader.readAsText(file);
+      return;
+    }
 
     if (fname.endsWith('.csv')) {
       reader.onload = (evt) => {
@@ -750,7 +813,7 @@ export function SetupPage({
               <input
                 ref={otherTipInputRef}
                 type="file"
-                accept=".xlsx,.xls,.csv"
+                accept=".xlsx,.xls,.csv,.tsv,.txt,.png,.jpg,.jpeg,.webp,image/*"
                 style={{ display: 'none' }}
                 onChange={handleOtherTipUpload}
               />
@@ -772,7 +835,13 @@ export function SetupPage({
               <p style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.98rem' }}>
                 Upload Other Tip Source
               </p>
-              {otherTipFileName ? (
+              {isOcrLoading ? (
+                <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <span style={{ color: '#00e5a3', fontSize: '0.85rem', fontWeight: 600 }}>
+                    ⚡ Scanning & transcribing screenshot via OCR...
+                  </span>
+                </div>
+              ) : otherTipFileName ? (
                 <div style={{ marginTop: '8px' }}>
                   <span
                     style={{
@@ -797,7 +866,7 @@ export function SetupPage({
                 </div>
               ) : (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '6px' }}>
-                  Import external channel tips (Online, DoorDash, Kiosk, Other)
+                  Import external channel tips (Excel, CSV, Text, or Screenshot)
                 </p>
               )}
             </div>
@@ -820,6 +889,7 @@ export function SetupPage({
                   <tr>
                     <th>Date</th>
                     <th>Day</th>
+                    <th>WebDash ($)</th>
                     <th>Online ($)</th>
                     <th>DoorDash ($)</th>
                     <th>Kiosk ($)</th>
@@ -838,7 +908,7 @@ export function SetupPage({
                           step="0.01"
                           disabled={isManualLocked}
                           className="input-clean"
-                          style={{ padding: '4px 8px', width: '100px', fontSize: '0.85rem' }}
+                          style={{ padding: '4px 8px', width: '85px', fontSize: '0.85rem' }}
                           value={d.webDashTips || 0}
                           onChange={(e) => onDailyInputChange(d.date, 'webDashTips', parseFloat(e.target.value) || 0)}
                         />
@@ -849,7 +919,18 @@ export function SetupPage({
                           step="0.01"
                           disabled={isManualLocked}
                           className="input-clean"
-                          style={{ padding: '4px 8px', width: '100px', fontSize: '0.85rem' }}
+                          style={{ padding: '4px 8px', width: '85px', fontSize: '0.85rem' }}
+                          value={d.onlineTips || 0}
+                          onChange={(e) => onDailyInputChange(d.date, 'onlineTips', parseFloat(e.target.value) || 0)}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          step="0.01"
+                          disabled={isManualLocked}
+                          className="input-clean"
+                          style={{ padding: '4px 8px', width: '85px', fontSize: '0.85rem' }}
                           value={d.doorDashTips || 0}
                           onChange={(e) => onDailyInputChange(d.date, 'doorDashTips', parseFloat(e.target.value) || 0)}
                         />
@@ -860,7 +941,7 @@ export function SetupPage({
                           step="0.01"
                           disabled={isManualLocked}
                           className="input-clean"
-                          style={{ padding: '4px 8px', width: '100px', fontSize: '0.85rem' }}
+                          style={{ padding: '4px 8px', width: '85px', fontSize: '0.85rem' }}
                           value={d.kioskTips || 0}
                           onChange={(e) => onDailyInputChange(d.date, 'kioskTips', parseFloat(e.target.value) || 0)}
                         />
@@ -871,13 +952,13 @@ export function SetupPage({
                           step="0.01"
                           disabled={isManualLocked}
                           className="input-clean"
-                          style={{ padding: '4px 8px', width: '100px', fontSize: '0.85rem' }}
+                          style={{ padding: '4px 8px', width: '85px', fontSize: '0.85rem' }}
                           value={d.otherTips || 0}
                           onChange={(e) => onDailyInputChange(d.date, 'otherTips', parseFloat(e.target.value) || 0)}
                         />
                       </td>
                       <td style={{ textAlign: 'right', fontWeight: 700, color: '#00e5a3' }}>
-                        ${((d.webDashTips || 0) + (d.doorDashTips || 0) + (d.kioskTips || 0) + (d.otherTips || 0)).toFixed(2)}
+                        ${((d.webDashTips || 0) + (d.onlineTips || 0) + (d.doorDashTips || 0) + (d.kioskTips || 0) + (d.otherTips || 0)).toFixed(2)}
                       </td>
                     </tr>
                   ))}

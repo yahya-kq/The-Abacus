@@ -543,7 +543,12 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
                   <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
                     {/* Sources breakdown badge row */}
                     <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                      <span className="badge badge-indigo">Online: ${day.tipSources.webDash.toFixed(2)}</span>
+                      {day.tipSources.webDash > 0 && (
+                        <span className="badge badge-indigo">WebDash: ${day.tipSources.webDash.toFixed(2)}</span>
+                      )}
+                      {day.tipSources.online > 0 && (
+                        <span className="badge badge-indigo">Online: ${day.tipSources.online.toFixed(2)}</span>
+                      )}
                       <span className="badge badge-teal">Kiosk: ${day.tipSources.kiosk.toFixed(2)}</span>
                       <span className="badge badge-gold">DoorDash: ${day.tipSources.doorDash.toFixed(2)}</span>
                       {day.tipSources.other > 0 && (

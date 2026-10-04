@@ -28,6 +28,7 @@ export interface SourceToggles {
   online: SourceToggleItem;
   qr: SourceToggleItem;
   thirdParty: SourceToggleItem;
+  webDash?: SourceToggleItem;
 }
 
 export interface RecipientConfig {
@@ -82,6 +83,7 @@ export interface DailyTipInput {
   displayDate: string; // e.g. "Sep 07, 2026"
   dayOfWeek: string;
   webDashTips: number;
+  onlineTips?: number;
   doorDashTips: number;
   kioskTips: number;
   otherTips: number;
@@ -113,6 +115,7 @@ export interface DailyCalculationResult {
   dayOfWeek: string;
   tipSources: {
     webDash: number;
+    online: number;
     doorDash: number;
     kiosk: number;
     other: number;

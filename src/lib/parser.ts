@@ -109,7 +109,10 @@ export function normalizeDate(dateVal: any, referenceYear = 2026): string {
   }
 
   // Clean string and strip any trailing time portion (e.g. " 12:00:00 AM", " 00:00:00", " 14:30")
-  const str = String(dateVal).trim().replace(/\s+(?:12:00:00\s*AM|00:00:00|\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)$/i, '');
+  let str = String(dateVal).trim().replace(/\s+(?:12:00:00\s*AM|00:00:00|\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)$/i, '');
+
+  // Strip day of week prefix if present (e.g. "Friday, September 11, 2026", "Mon, 07-Sep")
+  str = str.replace(/^(?:mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)[,\s]+/i, '').trim();
 
   // 1. ISO format: YYYY-MM-DD or YYYY/MM/DD
   const isoMatch = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
@@ -148,7 +151,7 @@ export function normalizeDate(dateVal: any, referenceYear = 2026): string {
     }
   }
 
-  // 4. MMM DD or MMM DD, YYYY (e.g. "Sep 7", "September 07, 2026", "Sep-07-2026")
+  // 4. MMM DD or MMM DD, YYYY (e.g. "Sep 7", "September 11, 2026", "Sep-07-2026")
   const mmmDMatch = str.match(/^([A-Za-z]{3,9})[-_\s](\d{1,2})(?:,?\s*(\d{2,4}))?$/);
   if (mmmDMatch) {
     const mStr = mmmDMatch[1].substring(0, 3).toLowerCase();
@@ -161,10 +164,13 @@ export function normalizeDate(dateVal: any, referenceYear = 2026): string {
     }
   }
 
-  // 5. Fallback Date parser for other browser-parseable formats
+  // 5. Fallback Date parser for other browser-parseable formats (using local date components to avoid timezone offset drift)
   const parsed = new Date(str);
   if (!isNaN(parsed.getTime()) && parsed.getFullYear() >= 2000 && parsed.getFullYear() <= 2099) {
-    return formatDateISO(parsed);
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
 
   return '';
@@ -186,7 +192,7 @@ export function parseCleanNumber(val: any): number {
   return isParenNeg ? -Math.abs(num) : num;
 }
 
-export type DetectedTipCategory = 'kiosk' | 'online' | 'doordash' | 'gratuity' | 'other' | 'total';
+export type DetectedTipCategory = 'webdash' | 'kiosk' | 'online' | 'doordash' | 'gratuity' | 'other' | 'total';
 
 /**
  * Classify generic column or label names into appropriate tip categories
@@ -199,16 +205,46 @@ export function classifyTipSource(sourceName: string): DetectedTipCategory {
   if (s.includes('kiosk') || s.includes('self-service') || s.includes('self service') || s.includes('tablet')) {
     return 'kiosk';
   }
+  if (s.includes('webdash') || s.includes('web dash') || s.includes('timecard tip') || s.includes('shift tip')) {
+    return 'webdash';
+  }
   if (s.includes('doordash') || s.includes('door dash') || s.includes('3po') || s.includes('third party') || s.includes('delivery') || s.includes('ubereats') || s.includes('uber') || s.includes('grubhub')) {
     return 'doordash';
   }
-  if (s.includes('online') || s.includes('webdash') || s.includes('web dash') || s.includes('mobile') || s.includes('toast online') || s.includes('toast') || s.includes('qr') || s.includes('digital') || s.includes('web tip')) {
+  if (s.includes('online') || s.includes('mobile') || s.includes('toast online') || s.includes('toast') || s.includes('qr') || s.includes('digital') || s.includes('web tip') || s.includes('dashboard')) {
     return 'online';
   }
   if (s.includes('grat') || s.includes('service charge') || s.includes('auto-grat') || s.includes('autograt') || s.includes('direct') || s.includes('catering')) {
     return 'gratuity';
   }
   return 'other';
+}
+
+/**
+ * Extract category and numeric amount directly from a cell string, even when merged
+ * (e.g. "Kiosk Tips 6.21", "Online $120.50", "DoorDash 45.00")
+ */
+export function extractCategoryAndAmount(cellVal: any): { category: DetectedTipCategory | null; amount: number } {
+  if (cellVal === undefined || cellVal === null) return { category: null, amount: 0 };
+  const str = String(cellVal).trim();
+  if (!str) return { category: null, amount: 0 };
+
+  const lower = str.toLowerCase();
+  let category: DetectedTipCategory | null = null;
+  if (lower.includes('kiosk') || lower.includes('tablet')) category = 'kiosk';
+  else if (lower.includes('webdash') || lower.includes('web dash')) category = 'webdash';
+  else if (lower.includes('doordash') || lower.includes('door dash') || lower.includes('3po') || lower.includes('delivery') || lower.includes('uber') || lower.includes('grubhub')) category = 'doordash';
+  else if (lower.includes('online') || lower.includes('dashboard') || lower.includes('web tip') || lower.includes('mobile') || lower.includes('toast')) category = 'online';
+  else if (lower.includes('grat') || lower.includes('service charge') || lower.includes('catering')) category = 'gratuity';
+  else if (lower.includes('total tip') || lower === 'total' || lower.includes('total pool')) category = 'total';
+  else if (lower.includes('tip') || lower.includes('cash') || lower.includes('other')) category = 'other';
+
+  if (!category) return { category: null, amount: 0 };
+
+  const numMatch = str.match(/[\$]?\s*(\d+(?:\.\d{1,2})?)(?:\s*[\$\/a-zA-Z]*)?$/) || str.match(/[\$]\s*(\d+(?:\.\d{1,2})?)/) || str.match(/(\d+\.\d{1,2})/);
+  const amount = numMatch ? parseFloat(numMatch[1]) : 0;
+
+  return { category, amount };
 }
 
 /**
@@ -428,9 +464,9 @@ export function parseTimecardRows(
     const gratuity = colIndex.gratuity !== -1 ? parseCleanNumber(row[colIndex.gratuity]) : 0;
     const collectedTips = directTips + gratuity;
 
-    // If role is Summary or Kiosk, accumulate directly into extracted tips
-    if (role.toLowerCase() === 'summary' || role.toLowerCase() === 'kiosk') {
-      extractedDailyTips[businessDate] = (extractedDailyTips[businessDate] || 0) + collectedTips;
+    // Accumulate shift collected tips (from WebDash / POS) by business date
+    if (collectedTips > 0) {
+      extractedDailyTips[businessDate] = Math.round(((extractedDailyTips[businessDate] || 0) + collectedTips) * 100) / 100;
     }
 
     shifts.push({
@@ -516,6 +552,7 @@ function parseOtherTipSourceWorkbook(
         displayDate: formatDisplayDate(d),
         dayOfWeek: getDayOfWeek(d),
         webDashTips: 0,
+        onlineTips: 0,
         doorDashTips: 0,
         kioskTips: 0,
         otherTips: 0,
@@ -529,7 +566,8 @@ function parseOtherTipSourceWorkbook(
     if (!dateStr || !amount) return;
     const entry = ensureDate(dateStr);
     if (category === 'kiosk') entry.kioskTips += amount;
-    else if (category === 'online') entry.webDashTips += amount;
+    else if (category === 'online') entry.onlineTips = (entry.onlineTips || 0) + amount;
+    else if (category === 'webdash') entry.webDashTips = (entry.webDashTips || 0) + amount;
     else if (category === 'doordash') entry.doorDashTips += amount;
     else if (category === 'gratuity' || category === 'other') entry.otherTips += amount;
     else if (category === 'total') entry.totalTips = amount;
@@ -650,7 +688,7 @@ function parseOtherTipSourceWorkbook(
     }
     if (parsedSheet) continue;
 
-    // --- STRATEGY 4: Unstructured / Key-Value Blocks (like Mission Hill block layout) ---
+    // --- STRATEGY 4: Format-Agnostic Blocks & Single-Cell Merged Entries ---
     let activeDate: string | null = null;
     let inSummaryHeader = false;
 
@@ -682,25 +720,18 @@ function parseOtherTipSourceWorkbook(
 
       if (!inSummaryHeader) continue;
 
-      // Scan strictly early columns (cols 0..5) for explicit tip channel lines
-      for (let c = 0; c < Math.min(5, row.length); c++) {
-        const cellText = String(row[c] || '').toLowerCase().trim();
-        if (!cellText) continue;
+      // Scan row for tip channel entries (both merged text+amount and separate columns)
+      for (let c = 0; c < row.length; c++) {
+        const cell = row[c];
+        if (!cell) continue;
 
-        let cat: DetectedTipCategory | null = null;
-        if (cellText.includes('dashboard') || cellText.includes('webdash') || cellText === 'online tips' || cellText === 'online') {
-          cat = 'online';
-        } else if (cellText.includes('doordash') || cellText.includes('3po') || cellText.includes('delivery')) {
-          cat = 'doordash';
-        } else if (cellText.includes('kiosk')) {
-          cat = 'kiosk';
-        } else if (cellText === 'total tips' || cellText === 'total tip') {
-          cat = 'total';
-        } else if (cellText === 'gratuity' || cellText === 'service charge') {
-          cat = 'gratuity';
+        const extracted = extractCategoryAndAmount(cell);
+        if (extracted.category && extracted.amount > 0) {
+          addTip(activeDate, extracted.category, extracted.amount);
+          continue;
         }
 
-        if (cat) {
+        if (extracted.category) {
           let num = 0;
           if (c + 1 < row.length) {
             num = parseCleanNumber(row[c + 1]);
@@ -709,12 +740,7 @@ function parseOtherTipSourceWorkbook(
             num = parseCleanNumber(row[c + 2]);
           }
           if (num > 0) {
-            const entry = ensureDate(activeDate);
-            if (cat === 'kiosk') entry.kioskTips = num;
-            else if (cat === 'online') entry.webDashTips = num;
-            else if (cat === 'doordash') entry.doorDashTips = num;
-            else if (cat === 'gratuity') entry.otherTips = num;
-            else if (cat === 'total') entry.totalTips = num;
+            addTip(activeDate, extracted.category, num);
           }
         }
       }
@@ -723,7 +749,7 @@ function parseOtherTipSourceWorkbook(
 
   // Ensure totalTips is computed if missing or if component sum is greater
   for (const d of Object.values(dailyTips)) {
-    const componentSum = (d.webDashTips || 0) + (d.doorDashTips || 0) + (d.kioskTips || 0) + (d.otherTips || 0);
+    const componentSum = (d.webDashTips || 0) + (d.onlineTips || 0) + (d.doorDashTips || 0) + (d.kioskTips || 0) + (d.otherTips || 0);
     if (!d.totalTips || d.totalTips < componentSum) {
       d.totalTips = Math.round(componentSum * 100) / 100;
     }
@@ -745,6 +771,51 @@ function parseOtherTipSourceWorkbook(
     detectedEndDate,
     errors,
   };
+}
+
+/**
+ * Parse plain text, raw tab-delimited, or OCR transcribed lines into daily tip entries
+ */
+export function parseOtherTipSourceText(text: string, referenceYear = 2026): ParseOtherTipSourceResult {
+  const lines = text.split(/\r?\n/);
+  const rows: any[][] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (trimmed.includes('\t')) {
+      rows.push(trimmed.split('\t').map((c) => c.trim()));
+    } else if (trimmed.includes('|')) {
+      rows.push(trimmed.split('|').map((c) => c.trim()));
+    } else if (trimmed.includes(',') && !trimmed.includes(', ')) {
+      rows.push(trimmed.split(',').map((c) => c.trim()));
+    } else {
+      const parts = trimmed.split(/\s{2,}/);
+      if (parts.length > 1) {
+        rows.push(parts);
+      } else {
+        rows.push([trimmed]);
+      }
+    }
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+  return parseOtherTipSourceWorkbook(wb, referenceYear);
+}
+
+/**
+ * Perform client-side OCR on image/screenshot of tip sheets (PNG, JPG, WEBP)
+ */
+export async function parseOtherTipSourceImage(
+  imageFile: File | Blob,
+  referenceYear = 2026
+): Promise<ParseOtherTipSourceResult> {
+  const Tesseract = await import('tesseract.js');
+  const result = await Tesseract.recognize(imageFile, 'eng');
+  const text = result?.data?.text || '';
+  return parseOtherTipSourceText(text, referenceYear);
 }
 
 /**

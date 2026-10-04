@@ -104,14 +104,16 @@ Each role is assigned a point weight reflecting skill, responsibility, or custom
 
 ---
 
-## 4. Multi-Channel Tip Ingestion
+## 4. Multi-Channel Tip Ingestion & Format-Agnostic Parser
 
-The Abacus ingests and tracks tip revenues across all hospitality channels:
-- **Online / WebDash Tips**: Web orders, mobile orders, and online ordering platforms.
+The Abacus ingests and tracks tip revenues across all hospitality channels with a **format-agnostic parsing engine**:
+- **Format-Agnostic Extraction**: Extracts true dates and channel amounts regardless of file structure—supporting merged label+amount cells (e.g. `Kiosk Tips 6.21` or `Online $120.00`), adjacent columns, long text dates (`Friday, September 11, 2026`), or Excel serial numbers.
+- **Screenshot & Photo OCR**: Native client-side OCR (`tesseract.js`) allows users to upload screenshots or images of tip sheets (`.png`, `.jpg`, `.jpeg`, `.webp`), automatically extracting dates and tip amounts.
+- **WebDash Timecard Auto-Fetch**: Tips recorded on shifts/timecards (originating from WebDash) are automatically extracted and populated into `WebDash ($)` ($100\%$ direct, eliminating arbitrary splits).
+- **Online Tips**: Web orders, mobile orders, and online ordering platforms.
 - **DoorDash Tips**: Third-party delivery platforms.
 - **Kiosk Tips**: Self-order kiosks and countertop terminals.
 - **Other Tips / Gratuities**: Direct event gratuities, catering service fees, or manual adjustments.
-- **Direct Shift Tips**: Employee collected tips with configurable tip-out or sales-based contribution percentages.
 
 ---
 
@@ -121,16 +123,20 @@ The Abacus ingests and tracks tip revenues across all hospitality channels:
    - Configure restaurant name, effective cycle date range, and distribution method.
    - Set up role contribution rules (% of Tips or % of Sales).
    - Configure recipient rules (% allocations or point weights).
-   - Inspect and adjust the **External Daily Tip Pool Entries** table with explicit channels (Online, DoorDash, Kiosk, Other).
-2. **Time Cards Page**:
+   - Inspect and adjust the **External Daily Tip Pool Entries** table featuring dedicated columns:
+     $$\text{Date} \mid \text{Day} \mid \textbf{WebDash (\$)} \mid \textbf{Online (\$)} \mid \textbf{DoorDash (\$)} \mid \textbf{Kiosk (\$)} \mid \textbf{Other (\$)} \mid \textbf{Total Input Tips}$$
+   - Drop Excel sheets, CSVs, text documents, or screenshot images directly into the upload card.
+2. **Permanent Hard-Refresh Purge**:
+   - Triggering a Hard Refresh permanently wipes all memory state, clears `localStorage` and `sessionStorage`, and resets DOM file inputs, returning the application to a pristine empty state with zero leftover cache.
+3. **Time Cards Page**:
    - Real-time shift ledger with search, role filters, and manual shift editor.
    - Built-in timezone converter supporting 7 North American zones.
-3. **Calculation Dashboard**:
+4. **Calculation Dashboard**:
    - Executive KPIs: Total Pool Distributed, Recipient Hours, Average Rate per Hour, and Total Overall Payout.
    - **Whole-Cycle Summary Table**: Total hours, net sales, kept tips, pool shares, total payouts, and effective $/hr rates.
    - **Date-by-Date Breakdown Tabs**: Daily audit breakdown showing staff working, recipient hours, hourly rates, and distributed pools.
    - **Employee Audit Modal**: Shift-by-shift ledger with daily breakdown.
-4. **Client-Ready PDF Export**:
+5. **Client-Ready PDF Export**:
    - Formal restaurant letterhead and date range.
    - Clean payroll-ready cycle summary table.
    - Date-by-date daily ledger table.

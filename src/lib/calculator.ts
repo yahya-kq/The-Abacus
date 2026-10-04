@@ -131,12 +131,17 @@ export function calculateTipCycle(
     }
 
     // 2. Add external sources from daily inputs
-    const kioskContrib = (dayInput.kioskTips || 0) * (settings.sources.kiosk.enabled ? settings.sources.kiosk.percent / 100 : 0);
-    const onlineContrib = (dayInput.webDashTips || 0) * (settings.sources.online.enabled ? settings.sources.online.percent / 100 : 0);
-    const thirdPartyContrib = (dayInput.doorDashTips || 0) * (settings.sources.thirdParty.enabled ? settings.sources.thirdParty.percent / 100 : 0);
+    const kioskContrib = (dayInput.kioskTips || 0) * (settings.sources.kiosk?.enabled ? settings.sources.kiosk.percent / 100 : 0);
+    const onlineContrib = (dayInput.onlineTips || 0) * (settings.sources.online?.enabled ? settings.sources.online.percent / 100 : 0);
+    const webDashContrib = (dayInput.webDashTips || 0) * (
+      settings.sources.webDash
+        ? (settings.sources.webDash.enabled ? settings.sources.webDash.percent / 100 : 0)
+        : (settings.sources.online?.enabled ? settings.sources.online.percent / 100 : 1)
+    );
+    const thirdPartyContrib = (dayInput.doorDashTips || 0) * (settings.sources.thirdParty?.enabled ? settings.sources.thirdParty.percent / 100 : 0);
     const otherContrib = (dayInput.otherTips || 0);
 
-    const externalPool = kioskContrib + onlineContrib + thirdPartyContrib + otherContrib;
+    const externalPool = kioskContrib + onlineContrib + webDashContrib + thirdPartyContrib + otherContrib;
     const computedPool = dayShiftContributions + externalPool;
     const effectivePool = computedPool > 0 ? computedPool : (dayInput.totalTips || 0);
     const totalDayPool = Math.round(effectivePool * 100) / 100;
@@ -328,7 +333,8 @@ export function calculateTipCycle(
       displayDate: formatDisplayDate(date),
       dayOfWeek: getDayOfWeek(date),
       tipSources: {
-        webDash: onlineContrib,
+        webDash: webDashContrib,
+        online: onlineContrib,
         doorDash: thirdPartyContrib,
         kiosk: kioskContrib,
         other: otherContrib,
