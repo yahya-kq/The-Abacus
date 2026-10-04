@@ -88,13 +88,19 @@ export function formatTimeDisplay(timeVal: any): string {
 }
 
 /**
- * Parse raw date string (e.g. "07-Sep", "2026-09-07", Excel serial 46272) into YYYY-MM-DD
+ * Parse raw date string or number into YYYY-MM-DD in local time
+ * Supports:
+ * - Excel serial dates (e.g. 46272 or 46272.5)
+ * - ISO formats (YYYY-MM-DD, YYYY/MM/DD)
+ * - US formats (MM/DD/YYYY, M/D/YYYY, MM-DD-YYYY, MM/DD/YY)
+ * - Textual formats (07-Sep, 7-Sep, 07-Sep-2026, Sep 07 2026, September 7)
+ * - Dates with timestamps (e.g. "2026-09-07 10:30:00")
  */
 export function normalizeDate(dateVal: any, referenceYear = 2026): string {
-  if (!dateVal) return '';
+  if (dateVal === undefined || dateVal === null || dateVal === '') return '';
 
-  // If number (Excel serial date)
-  if (typeof dateVal === 'number' || (!isNaN(Number(dateVal)) && Number(dateVal) > 40000)) {
+  // If number or numeric string (Excel serial date e.g. 46272 or 46272.5)
+  if (typeof dateVal === 'number' || (!isNaN(Number(dateVal)) && Number(dateVal) > 35000 && Number(dateVal) < 65000)) {
     const num = Number(dateVal);
     // Excel 1900 date system
     const excelEpoch = new Date(1899, 11, 30);
@@ -102,34 +108,107 @@ export function normalizeDate(dateVal: any, referenceYear = 2026): string {
     return formatDateISO(date);
   }
 
-  const str = String(dateVal).trim();
+  // Clean string and strip any trailing time portion (e.g. " 12:00:00 AM", " 00:00:00", " 14:30")
+  const str = String(dateVal).trim().replace(/\s+(?:12:00:00\s*AM|00:00:00|\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)$/i, '');
 
-  // If standard YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-    return str;
+  // 1. ISO format: YYYY-MM-DD or YYYY/MM/DD
+  const isoMatch = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (isoMatch) {
+    const y = parseInt(isoMatch[1], 10);
+    const m = String(parseInt(isoMatch[2], 10)).padStart(2, '0');
+    const d = String(parseInt(isoMatch[3], 10)).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
 
-  // Format like "07-Sep" or "7-Sep"
-  const mmmMatch = str.match(/^(\d{1,2})-([A-Za-z]{3})$/);
-  if (mmmMatch) {
-    const day = parseInt(mmmMatch[1], 10);
-    const monthStr = mmmMatch[2].toLowerCase();
-    const months: Record<string, number> = {
-      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
-    };
-    const month = months[monthStr] ?? 8;
-    const date = new Date(referenceYear, month, day);
-    return formatDateISO(date);
+  // 2. US Numeric: MM/DD/YYYY, M/D/YYYY, MM-DD-YYYY, M-D-YYYY, or with 2-digit year MM/DD/YY
+  const usMatch = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/);
+  if (usMatch) {
+    let year = parseInt(usMatch[3], 10);
+    if (year < 100) year += year < 50 ? 2000 : 1900;
+    const m = String(parseInt(usMatch[1], 10)).padStart(2, '0');
+    const d = String(parseInt(usMatch[2], 10)).padStart(2, '0');
+    return `${year}-${m}-${d}`;
   }
 
-  // Fallback Date parser
+  const months: Record<string, number> = {
+    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+  };
+
+  // 3. DD-MMM or DD-MMM-YYYY (e.g. "07-Sep", "7-Sep", "07-Sep-2026", "7-Sep-26")
+  const dMmmMatch = str.match(/^(\d{1,2})[-_\s]([A-Za-z]{3,9})(?:[-_\s](\d{2,4}))?$/);
+  if (dMmmMatch) {
+    const day = parseInt(dMmmMatch[1], 10);
+    const mStr = dMmmMatch[2].substring(0, 3).toLowerCase();
+    const month = months[mStr];
+    if (month !== undefined) {
+      let year = dMmmMatch[3] ? parseInt(dMmmMatch[3], 10) : referenceYear;
+      if (year < 100) year += 2000;
+      return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+  }
+
+  // 4. MMM DD or MMM DD, YYYY (e.g. "Sep 7", "September 07, 2026", "Sep-07-2026")
+  const mmmDMatch = str.match(/^([A-Za-z]{3,9})[-_\s](\d{1,2})(?:,?\s*(\d{2,4}))?$/);
+  if (mmmDMatch) {
+    const mStr = mmmDMatch[1].substring(0, 3).toLowerCase();
+    const day = parseInt(mmmDMatch[2], 10);
+    const month = months[mStr];
+    if (month !== undefined) {
+      let year = mmmDMatch[3] ? parseInt(mmmDMatch[3], 10) : referenceYear;
+      if (year < 100) year += 2000;
+      return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+  }
+
+  // 5. Fallback Date parser for other browser-parseable formats
   const parsed = new Date(str);
-  if (!isNaN(parsed.getTime())) {
+  if (!isNaN(parsed.getTime()) && parsed.getFullYear() >= 2000 && parsed.getFullYear() <= 2099) {
     return formatDateISO(parsed);
   }
 
-  return str;
+  return '';
+}
+
+/**
+ * Clean and parse arbitrary monetary numbers (e.g. "$45.50", "1,250.00", "(15.00)", " - ")
+ */
+export function parseCleanNumber(val: any): number {
+  if (val === undefined || val === null || val === '') return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  const str = String(val).trim();
+  if (str === '-' || str.toLowerCase() === 'n/a' || str.toLowerCase() === 'null') return 0;
+  // Handle accounting parentheses negative e.g. (45.50) -> -45.50
+  const isParenNeg = /^\(.*\)$/.test(str);
+  const clean = str.replace(/[^\d.-]/g, '');
+  const num = parseFloat(clean);
+  if (isNaN(num)) return 0;
+  return isParenNeg ? -Math.abs(num) : num;
+}
+
+export type DetectedTipCategory = 'kiosk' | 'online' | 'doordash' | 'gratuity' | 'other' | 'total';
+
+/**
+ * Classify generic column or label names into appropriate tip categories
+ */
+export function classifyTipSource(sourceName: string): DetectedTipCategory {
+  const s = String(sourceName || '').toLowerCase().trim();
+  if (s.includes('total') || s === 'sum' || s.includes('grand total') || s.includes('total tip') || s.includes('total pool')) {
+    return 'total';
+  }
+  if (s.includes('kiosk') || s.includes('self-service') || s.includes('self service') || s.includes('tablet')) {
+    return 'kiosk';
+  }
+  if (s.includes('doordash') || s.includes('door dash') || s.includes('3po') || s.includes('third party') || s.includes('delivery') || s.includes('ubereats') || s.includes('uber') || s.includes('grubhub')) {
+    return 'doordash';
+  }
+  if (s.includes('online') || s.includes('webdash') || s.includes('web dash') || s.includes('mobile') || s.includes('toast online') || s.includes('toast') || s.includes('qr') || s.includes('digital') || s.includes('web tip')) {
+    return 'online';
+  }
+  if (s.includes('grat') || s.includes('service charge') || s.includes('auto-grat') || s.includes('autograt') || s.includes('direct') || s.includes('catering')) {
+    return 'gratuity';
+  }
+  return 'other';
 }
 
 /**
@@ -193,6 +272,10 @@ export function parseTimecardCsv(
 /**
  * Parse 2D array of rows from timecard
  */
+/**
+ * Parse 2D array of rows from timecard
+ * Handles generic ordering, irregular headers, and unstructured shift formats
+ */
 export function parseTimecardRows(
   rows: any[][],
   settings: TipPoolSettings,
@@ -202,15 +285,26 @@ export function parseTimecardRows(
   const errors: string[] = [];
   const extractedDailyTips: Record<string, number> = {};
 
-  if (rows.length < 2) {
+  if (!rows || rows.length < 2) {
     return { shifts: [], rawRowCount: 0, errors: ['File contains no shift records.'], extractedDailyTips: {} };
   }
 
-  // Find header row (looks for "Name", "Role", "Date", "Total Hours")
+  // Helper to check if a header string contains any alias
+  const hasAlias = (text: string, aliases: string[]) => {
+    const lower = text.toLowerCase().trim();
+    return aliases.some((a) => lower === a || lower.includes(a));
+  };
+
+  // Find header row (searches up to row 20)
   let headerIndex = -1;
-  for (let i = 0; i < Math.min(10, rows.length); i++) {
-    const rowStr = rows[i].map((c) => String(c).toLowerCase()).join(' ');
-    if (rowStr.includes('name') && (rowStr.includes('role') || rowStr.includes('hours') || rowStr.includes('date'))) {
+  for (let i = 0; i < Math.min(20, rows.length); i++) {
+    const row = rows[i];
+    if (!Array.isArray(row)) continue;
+    const rowStr = row.map((c) => String(c).toLowerCase()).join(' ');
+    if (
+      (rowStr.includes('name') || rowStr.includes('employee')) &&
+      (rowStr.includes('role') || rowStr.includes('hours') || rowStr.includes('date') || rowStr.includes('time'))
+    ) {
       headerIndex = i;
       break;
     }
@@ -222,33 +316,70 @@ export function parseTimecardRows(
 
   const header = rows[headerIndex].map((c) => String(c).trim().toLowerCase());
 
-  // Find column indices
-  const colIndex = {
-    name: header.findIndex((h) => h === 'name' || h.includes('employee')),
-    role: header.findIndex((h) => h === 'role' || h.includes('job') || h.includes('position')),
-    payRate: header.findIndex((h) => h.includes('pay rate') || h.includes('rate')),
-    date: header.findIndex((h) => h === 'date' || h.includes('shift date')),
-    timeIn: header.findIndex((h) => h.includes('time in') || h.includes('in')),
-    timeOut: header.findIndex((h) => h.includes('time out') || h.includes('out')),
-    totalHours: header.findIndex(
-      (h) =>
-        h.includes('total hours (excluding unpaid breaks)') ||
-        h.includes('total hours') ||
-        h === 'hours' ||
-        h.includes('total paid')
-    ),
-    netSale: header.findIndex((h) => h.includes('net sale') || h.includes('sales')),
-    tips: header.findIndex((h) => h === 'tips' || h.includes('collected tips') || h.includes('credit card tips')),
-    gratuity: header.findIndex((h) => h.includes('gratuity')),
+  // Match columns by comprehensive aliases
+  const findCol = (aliases: string[]) => {
+    return header.findIndex((h) => hasAlias(h, aliases));
   };
 
-  // Defaults
+  const colIndex = {
+    name: findCol(['name', 'employee', 'worker', 'staff', 'team member', 'full name', 'first name']),
+    role: findCol(['role', 'job', 'position', 'department', 'title']),
+    payRate: findCol(['pay rate', 'hourly rate', 'wage', 'rate']),
+    date: findCol(['date', 'shift date', 'business date', 'work date', 'day']),
+    timeIn: findCol(['time in', 'clock in', 'start time', 'start', 'punch in', 'in']),
+    timeOut: findCol(['time out', 'clock out', 'end time', 'end', 'punch out', 'out']),
+    totalHours: findCol([
+      'total hours (excluding unpaid breaks)',
+      'total hours',
+      'worked hours',
+      'regular hours',
+      'total paid',
+      'duration',
+      'hours',
+    ]),
+    netSale: findCol(['net sale', 'sales', 'gross sale', 'total sale']),
+    tips: findCol(['collected tips', 'credit card tips', 'cc tips', 'direct tips', 'tips']),
+    gratuity: findCol(['gratuity', 'auto gratuity', 'service charge', 'grat']),
+  };
+
+  // Dynamic Fallback: sample data rows if critical columns were not identified by header names
+  const sampleRows = rows.slice(headerIndex + 1, Math.min(headerIndex + 25, rows.length));
+  const maxCols = Math.max(...sampleRows.map((r) => r.length), header.length);
+
+  if (colIndex.date === -1) {
+    for (let c = 0; c < maxCols; c++) {
+      let validDateCount = 0;
+      for (const sr of sampleRows) {
+        if (sr[c] && normalizeDate(sr[c], referenceYear)) validDateCount++;
+      }
+      if (validDateCount >= Math.min(3, sampleRows.length)) {
+        colIndex.date = c;
+        break;
+      }
+    }
+  }
+
+  if (colIndex.totalHours === -1) {
+    for (let c = 0; c < maxCols; c++) {
+      if (c === colIndex.date) continue;
+      let validHoursCount = 0;
+      for (const sr of sampleRows) {
+        const num = parseCleanNumber(sr[c]);
+        if (num > 0 && num <= 24) validHoursCount++;
+      }
+      if (validHoursCount >= Math.min(3, sampleRows.length)) {
+        colIndex.totalHours = c;
+        break;
+      }
+    }
+  }
+
   if (colIndex.name === -1) colIndex.name = 0;
-  if (colIndex.role === -1) colIndex.role = 1;
+  if (colIndex.role === -1) colIndex.role = colIndex.name === 0 ? 1 : 0;
   if (colIndex.date === -1) colIndex.date = 3;
   if (colIndex.timeIn === -1) colIndex.timeIn = 4;
-  if (colIndex.timeOut === -1) colIndex.timeOut = 6 >= rows[headerIndex].length ? 5 : 6;
-  if (colIndex.totalHours === -1) colIndex.totalHours = 13 >= rows[headerIndex].length ? 7 : 13;
+  if (colIndex.timeOut === -1) colIndex.timeOut = 5 >= header.length ? 5 : 6;
+  if (colIndex.totalHours === -1) colIndex.totalHours = 13 >= header.length ? 7 : 13;
 
   let currentEmployeeName = '';
   const recipientRoles = new Set(settings.recipients.map((r) => r.role.toLowerCase()));
@@ -260,7 +391,7 @@ export function parseTimecardRows(
 
     // Check name
     const rawName = String(row[colIndex.name] || '').trim();
-    if (rawName && rawName.toLowerCase() !== 'total') {
+    if (rawName && rawName.toLowerCase() !== 'total' && !rawName.toLowerCase().startsWith('summary')) {
       currentEmployeeName = rawName;
     }
 
@@ -274,9 +405,7 @@ export function parseTimecardRows(
     const rawDate = row[colIndex.date];
     const timeIn = formatTimeDisplay(row[colIndex.timeIn]);
     const timeOut = formatTimeDisplay(row[colIndex.timeOut]);
-    const rawHours = row[colIndex.totalHours];
-
-    const hours = typeof rawHours === 'number' ? rawHours : parseFloat(String(rawHours).replace(/[^\d.-]/g, '')) || 0;
+    const hours = parseCleanNumber(row[colIndex.totalHours]);
 
     // Skip 0 hour shifts
     if (hours <= 0) continue;
@@ -291,10 +420,10 @@ export function parseTimecardRows(
     const isEligibleRecipient = recipientRoles.has(role.toLowerCase());
     const isContributor = contributorRoles.has(role.toLowerCase());
 
-    const payRate = parseFloat(String(row[colIndex.payRate] || '0').replace(/[^\d.-]/g, '')) || 0;
-    const netSale = parseFloat(String(row[colIndex.netSale] || '0').replace(/[^\d.-]/g, '')) || 0;
-    const directTips = colIndex.tips !== -1 ? (parseFloat(String(row[colIndex.tips] || '0').replace(/[^\d.-]/g, '')) || 0) : 0;
-    const gratuity = colIndex.gratuity !== -1 ? (parseFloat(String(row[colIndex.gratuity] || '0').replace(/[^\d.-]/g, '')) || 0) : 0;
+    const payRate = parseCleanNumber(row[colIndex.payRate]);
+    const netSale = parseCleanNumber(row[colIndex.netSale]);
+    const directTips = colIndex.tips !== -1 ? parseCleanNumber(row[colIndex.tips]) : 0;
+    const gratuity = colIndex.gratuity !== -1 ? parseCleanNumber(row[colIndex.gratuity]) : 0;
     const collectedTips = directTips + gratuity;
 
     // If role is Summary or Kiosk, accumulate directly into extracted tips
@@ -321,6 +450,13 @@ export function parseTimecardRows(
       isContributor,
     });
   }
+
+  // Ensure shifts are sorted chronologically: businessDate -> timeIn -> employeeName
+  shifts.sort((a, b) => {
+    if (a.businessDate !== b.businessDate) return a.businessDate.localeCompare(b.businessDate);
+    if (a.timeIn !== b.timeIn) return a.timeIn.localeCompare(b.timeIn);
+    return a.employeeName.localeCompare(b.employeeName);
+  });
 
   // Detect min and max business dates
   const dates = shifts.map((s) => s.businessDate).filter(Boolean).sort();
@@ -356,6 +492,14 @@ export function parseOtherTipSourceCsv(
   return parseOtherTipSourceWorkbook(workbook, referenceYear);
 }
 
+/**
+ * Universal Multi-Strategy Other Tip Source Parser
+ * Capable of automatically extracting dates and tip amounts from:
+ * 1. Horizontal Matrix Tables (dates across column headers)
+ * 2. Transactional Log Tables (date, category/source, amount columns)
+ * 3. Generic Columnar Tables (date column + source columns in ANY order)
+ * 4. Unstructured / Key-Value Blocks (dates as block headers with tip items below)
+ */
 function parseOtherTipSourceWorkbook(
   workbook: XLSX.WorkBook,
   referenceYear = 2026
@@ -363,130 +507,210 @@ function parseOtherTipSourceWorkbook(
   const dailyTips: Record<string, DailyTipInput> = {};
   const errors: string[] = [];
 
+  const ensureDate = (d: string) => {
+    if (!dailyTips[d]) {
+      dailyTips[d] = {
+        date: d,
+        displayDate: formatDisplayDate(d),
+        dayOfWeek: getDayOfWeek(d),
+        webDashTips: 0,
+        doorDashTips: 0,
+        kioskTips: 0,
+        otherTips: 0,
+        totalTips: 0,
+      };
+    }
+    return dailyTips[d];
+  };
+
+  const addTip = (dateStr: string, category: DetectedTipCategory, amount: number) => {
+    if (!dateStr || !amount) return;
+    const entry = ensureDate(dateStr);
+    if (category === 'kiosk') entry.kioskTips += amount;
+    else if (category === 'online') entry.webDashTips += amount;
+    else if (category === 'doordash') entry.doorDashTips += amount;
+    else if (category === 'gratuity' || category === 'other') entry.otherTips += amount;
+    else if (category === 'total') entry.totalTips = amount;
+  };
+
+  const isDateHeader = (text: string) => {
+    const s = String(text || '').toLowerCase().trim();
+    return s === 'date' || s.includes('date') || s === 'day' || s.includes('shift date') || s.includes('business date');
+  };
+
+  // Iterate over all sheets in the workbook
   for (const sheetName of workbook.SheetNames) {
     const ws = workbook.Sheets[sheetName];
+    if (!ws) continue;
     const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
     if (!rows || rows.length === 0) continue;
 
-    // Check if columnar format (Header row with Date, Tips, etc.)
-    let dateCol = -1;
-    let onlineCol = -1;
-    let doordashCol = -1;
-    let kioskCol = -1;
-    let otherCol = -1;
-    let totalCol = -1;
-    let headerRow = -1;
+    let parsedSheet = false;
 
+    // --- STRATEGY 1: Horizontal Matrix Table (Dates in column headers across a row) ---
     for (let r = 0; r < Math.min(15, rows.length); r++) {
       const row = rows[r];
       if (!Array.isArray(row)) continue;
-      const lowerRow = row.map((c) => String(c).toLowerCase().trim());
-      const dIdx = lowerRow.findIndex((c) => c === 'date' || c.includes('cycle date') || c.includes('shift date'));
-      if (dIdx !== -1) {
-        dateCol = dIdx;
-        headerRow = r;
-        onlineCol = lowerRow.findIndex((c) => c.includes('dash') || c.includes('online') || c.includes('web'));
-        doordashCol = lowerRow.findIndex((c) => c.includes('door') || c.includes('3po') || c.includes('delivery'));
-        kioskCol = lowerRow.findIndex((c) => c.includes('kiosk'));
-        otherCol = lowerRow.findIndex((c) => c.includes('other'));
-        totalCol = lowerRow.findIndex((c) => c.includes('total tip') || c === 'total');
+      const dateCols: { col: number; date: string }[] = [];
+      for (let c = 0; c < row.length; c++) {
+        const d = normalizeDate(row[c], referenceYear);
+        if (d) dateCols.push({ col: c, date: d });
+      }
+      if (dateCols.length >= 2) {
+        parsedSheet = true;
+        for (let subR = r + 1; subR < rows.length; subR++) {
+          const subRow = rows[subR];
+          if (!subRow || !Array.isArray(subRow)) continue;
+          const label = String(subRow[0] || subRow[1] || '').trim();
+          const cat = classifyTipSource(label);
+          for (const dc of dateCols) {
+            const val = parseCleanNumber(subRow[dc.col]);
+            if (val > 0) addTip(dc.date, cat, val);
+          }
+        }
         break;
       }
     }
+    if (parsedSheet) continue;
 
-    if (dateCol !== -1) {
-      for (let r = headerRow + 1; r < rows.length; r++) {
-        const row = rows[r];
-        if (!row || !row[dateCol]) continue;
-        const dVal = row[dateCol];
-        const dateStr = normalizeDate(dVal, referenceYear);
-        if (!dateStr) continue;
+    // --- STRATEGY 2: Transactional Log Table (Date col, Category/Source col, Amount col) ---
+    for (let r = 0; r < Math.min(15, rows.length); r++) {
+      const row = rows[r];
+      if (!Array.isArray(row)) continue;
+      const lower = row.map((c) => String(c).toLowerCase().trim());
+      const dateIdx = lower.findIndex(isDateHeader);
+      const catIdx = lower.findIndex(
+        (c) =>
+          c.includes('source') ||
+          c.includes('category') ||
+          c.includes('type') ||
+          c.includes('channel') ||
+          c.includes('description') ||
+          c.includes('tip name')
+      );
+      const amtIdx = lower.findIndex(
+        (c) =>
+          c.includes('amount') ||
+          c === 'tips' ||
+          c.includes('tip amount') ||
+          c.includes('total') ||
+          c.includes('value')
+      );
 
-        const webDashTips = onlineCol !== -1 ? (parseFloat(String(row[onlineCol]).replace(/[^\d.-]/g, '')) || 0) : 0;
-        const doorDashTips = doordashCol !== -1 ? (parseFloat(String(row[doordashCol]).replace(/[^\d.-]/g, '')) || 0) : 0;
-        const kioskTips = kioskCol !== -1 ? (parseFloat(String(row[kioskCol]).replace(/[^\d.-]/g, '')) || 0) : 0;
-        const otherTips = otherCol !== -1 ? (parseFloat(String(row[otherCol]).replace(/[^\d.-]/g, '')) || 0) : 0;
-        let totalTips = totalCol !== -1 ? (parseFloat(String(row[totalCol]).replace(/[^\d.-]/g, '')) || 0) : 0;
-        if (!totalTips) totalTips = webDashTips + doorDashTips + kioskTips + otherTips;
-
-        dailyTips[dateStr] = {
-          date: dateStr,
-          displayDate: formatDisplayDate(dateStr),
-          dayOfWeek: getDayOfWeek(dateStr),
-          webDashTips,
-          doorDashTips,
-          kioskTips,
-          otherTips,
-          totalTips,
-        };
+      if (dateIdx !== -1 && catIdx !== -1 && amtIdx !== -1) {
+        parsedSheet = true;
+        for (let subR = r + 1; subR < rows.length; subR++) {
+          const subRow = rows[subR];
+          if (!subRow || !Array.isArray(subRow)) continue;
+          const d = normalizeDate(subRow[dateIdx], referenceYear);
+          if (!d) continue;
+          const cat = classifyTipSource(subRow[catIdx]);
+          const amt = parseCleanNumber(subRow[amtIdx]);
+          if (amt > 0) addTip(d, cat, amt);
+        }
+        break;
       }
-    } else {
-      // Check block-style layout (like Mission Hill Tips where dates are headers and tips are listed underneath)
-      let currentDate = '';
-      for (let r = 0; r < rows.length; r++) {
-        const row = rows[r];
-        if (!row || !Array.isArray(row)) continue;
+    }
+    if (parsedSheet) continue;
 
-        // Check for date in early columns
-        for (let c = 0; c < Math.min(5, row.length); c++) {
-          const val = row[c];
-          if (
-            (typeof val === 'number' && val > 40000 && val < 60000) ||
-            (typeof val === 'string' && (/^\d{4}-\d{2}-\d{2}$/.test(val) || /^\d{1,2}-[A-Za-z]{3}$/.test(val)))
-          ) {
-            const parsed = normalizeDate(val, referenceYear);
-            if (parsed) {
-              currentDate = parsed;
-              if (!dailyTips[currentDate]) {
-                dailyTips[currentDate] = {
-                  date: currentDate,
-                  displayDate: formatDisplayDate(currentDate),
-                  dayOfWeek: getDayOfWeek(currentDate),
-                  webDashTips: 0,
-                  doorDashTips: 0,
-                  kioskTips: 0,
-                  otherTips: 0,
-                  totalTips: 0,
-                };
-              }
-            }
-          }
+    // --- STRATEGY 3: Generic Columnar Table (Date col + source columns in ANY order) ---
+    for (let r = 0; r < Math.min(20, rows.length); r++) {
+      const row = rows[r];
+      if (!Array.isArray(row)) continue;
+      const lower = row.map((c) => String(c).toLowerCase().trim());
+      const dateIdx = lower.findIndex(isDateHeader);
+
+      if (dateIdx !== -1) {
+        const colMap: { col: number; category: DetectedTipCategory }[] = [];
+        for (let c = 0; c < row.length; c++) {
+          if (c === dateIdx) continue;
+          const cat = classifyTipSource(lower[c]);
+          colMap.push({ col: c, category: cat });
         }
 
-        // Check for tip line items
-        const line = row.map((x) => String(x).toLowerCase().trim());
-        for (let c = 0; c < line.length; c++) {
-          const cell = line[c];
-          const nextVal = parseFloat(String(row[c + 1] || '0').replace(/[^\d.-]/g, '')) || 0;
-          if (currentDate && dailyTips[currentDate]) {
-            if (cell.includes('dashboard tip') || cell.includes('webdash') || cell === 'online tips') {
-              dailyTips[currentDate].webDashTips = nextVal;
-            } else if (cell.includes('doordash') || cell.includes('3po') || cell.includes('delivery')) {
-              dailyTips[currentDate].doorDashTips = nextVal;
-            } else if (cell.includes('kiosk tip') || cell === 'kiosk') {
-              dailyTips[currentDate].kioskTips = nextVal;
-            } else if (cell === 'total tips' || cell === 'total tip') {
-              dailyTips[currentDate].totalTips = nextVal;
+        // Verify if at least one column is a recognized tip source or total
+        const hasRecognizedTipCol = colMap.some((cm) => cm.category !== 'other');
+        if (hasRecognizedTipCol) {
+          parsedSheet = true;
+          for (let subR = r + 1; subR < rows.length; subR++) {
+            const subRow = rows[subR];
+            if (!subRow || !Array.isArray(subRow)) continue;
+            const d = normalizeDate(subRow[dateIdx], referenceYear);
+            if (!d) continue;
+            for (const cm of colMap) {
+              const val = parseCleanNumber(subRow[cm.col]);
+              if (val > 0) addTip(d, cm.category, val);
             }
+          }
+          break;
+        }
+      }
+    }
+    if (parsedSheet) continue;
+
+    // --- STRATEGY 4: Unstructured / Key-Value Blocks (like Mission Hill block layout) ---
+    let activeDate: string | null = null;
+    for (let r = 0; r < rows.length; r++) {
+      const row = rows[r];
+      if (!row || !Array.isArray(row)) continue;
+
+      // Check if any cell in early columns contains a valid date
+      for (let c = 0; c < Math.min(6, row.length); c++) {
+        const d = normalizeDate(row[c], referenceYear);
+        if (d) {
+          activeDate = d;
+          ensureDate(activeDate);
+          break;
+        }
+      }
+
+      if (!activeDate) continue;
+
+      // Scan row cells for tip labels and adjacent numbers
+      for (let c = 0; c < row.length; c++) {
+        const cellText = String(row[c] || '').toLowerCase().trim();
+        if (!cellText) continue;
+        const cat = classifyTipSource(cellText);
+        if (cat !== 'other' || cellText.includes('tip') || cellText.includes('grat') || cellText.includes('pool')) {
+          let num = 0;
+          if (c + 1 < row.length) {
+            num = parseCleanNumber(row[c + 1]);
+          }
+          if (!num && c + 2 < row.length) {
+            num = parseCleanNumber(row[c + 2]);
+          }
+          if (!num) {
+            const matchNum = cellText.match(/[\$]?(\d+(?:\.\d{1,2})?)/);
+            if (matchNum) num = parseFloat(matchNum[1]);
+          }
+          if (num > 0) {
+            addTip(activeDate, cat, num);
           }
         }
       }
     }
   }
 
-  // Ensure totalTips is computed if missing
+  // Ensure totalTips is computed if missing or if component sum is greater
   for (const d of Object.values(dailyTips)) {
-    if (!d.totalTips) {
-      d.totalTips = (d.webDashTips || 0) + (d.doorDashTips || 0) + (d.kioskTips || 0) + (d.otherTips || 0);
+    const componentSum = (d.webDashTips || 0) + (d.doorDashTips || 0) + (d.kioskTips || 0) + (d.otherTips || 0);
+    if (!d.totalTips || d.totalTips < componentSum) {
+      d.totalTips = Math.round(componentSum * 100) / 100;
     }
   }
 
+  // Ensure dates are sorted chronologically
   const sortedDates = Object.keys(dailyTips).sort();
+  const sortedDailyTips: Record<string, DailyTipInput> = {};
+  for (const dt of sortedDates) {
+    sortedDailyTips[dt] = dailyTips[dt];
+  }
+
   const detectedStartDate = sortedDates[0];
   const detectedEndDate = sortedDates[sortedDates.length - 1];
 
   return {
-    dailyTips,
+    dailyTips: sortedDailyTips,
     detectedStartDate,
     detectedEndDate,
     errors,

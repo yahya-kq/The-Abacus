@@ -210,11 +210,14 @@ export default function Home() {
     setTimeCardFileName(null);
     setOtherTipFileName(null);
     setSettings({
+      poolName: '',
       restaurantName: '',
+      dateMode: 'range',
       startDate: '',
       endDate: '',
-      payPeriodType: 'Bi-Weekly',
-      ruleType: 'Daily',
+      timePeriod: 'all_day',
+      splitSetup: '',
+      contributors: [],
       sources: {
         kiosk: { enabled: false, percent: 100 },
         online: { enabled: false, percent: 100 },
@@ -264,6 +267,38 @@ export default function Home() {
       updatedSettings.restaurantName = finalRestaurant;
       if (!updatedSettings.poolName) updatedSettings.poolName = `${finalRestaurant} Tip Pool`;
     }
+
+    // Auto-enable tip source toggles if uploaded data has non-zero amounts
+    let hasKiosk = false;
+    let hasOnline = false;
+    let hasThirdParty = false;
+    for (const val of Object.values(loadedDailyTips)) {
+      if ((val.kioskTips || 0) > 0) hasKiosk = true;
+      if ((val.webDashTips || 0) > 0) hasOnline = true;
+      if ((val.doorDashTips || 0) > 0) hasThirdParty = true;
+    }
+
+    if (hasKiosk || hasOnline || hasThirdParty) {
+      updatedSettings.sources = {
+        ...updatedSettings.sources,
+        kiosk: {
+          ...updatedSettings.sources?.kiosk,
+          enabled: hasKiosk || Boolean(updatedSettings.sources?.kiosk?.enabled),
+          percent: updatedSettings.sources?.kiosk?.percent ?? 100,
+        },
+        online: {
+          ...updatedSettings.sources?.online,
+          enabled: hasOnline || Boolean(updatedSettings.sources?.online?.enabled),
+          percent: updatedSettings.sources?.online?.percent ?? 100,
+        },
+        thirdParty: {
+          ...updatedSettings.sources?.thirdParty,
+          enabled: hasThirdParty || Boolean(updatedSettings.sources?.thirdParty?.enabled),
+          percent: updatedSettings.sources?.thirdParty?.percent ?? 100,
+        },
+      };
+    }
+
     setSettings(updatedSettings);
 
     setDailyTipInputs((prev) => {
