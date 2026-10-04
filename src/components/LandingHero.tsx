@@ -80,9 +80,9 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
       ['0', '.', 'AUTO', '='],
     ];
 
-    // Proper, upright balanced 3D perspective
-    const baseRotX = 0.04;
-    const baseRotY = -0.03;
+    // Reverted to previous isometric 3D perspective (0.38 and -0.32)
+    const baseRotX = 0.38;
+    const baseRotY = -0.32;
     let rotX = baseRotX;
     let rotY = baseRotY;
     let targetRotX = baseRotX;
@@ -108,9 +108,9 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
       }
       keyHighlightIntensity = Math.max(0.2, keyHighlightIntensity - 0.015);
 
-      // Smooth inertia interpolation for rotation and hover glow
-      rotX += (targetRotX - rotX) * 0.08;
-      rotY += (targetRotY - rotY) * 0.08;
+      // Smooth inertia interpolation for 3D rotation and hover glow
+      rotX += (targetRotX - rotX) * 0.07;
+      rotY += (targetRotY - rotY) * 0.07;
       hoverIntensity += (targetHoverIntensity - hoverIntensity) * 0.08;
 
       // Subtle, gentle floating bobbing height
@@ -454,11 +454,43 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
 
     render();
 
-    // Scoped hover interaction: ONLY triggers when cursor is within the limited circle over the calculator
-    const handleMouseMove = (e: MouseEvent) => {
+    // Specific circle bounding the calculator in 3D space
+    const hoverRadius = 240;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let dragStartRotX = baseRotX;
+    let dragStartRotY = baseRotY;
+
+    const handlePointerDown = (e: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const mouseX = (e.clientX - rect.left) * scaleX;
+      const mouseY = (e.clientY - rect.top) * scaleY;
 
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const dist = Math.hypot(mouseX - centerX, mouseY - centerY);
+
+      // Only allows dragging when clicking directly on the calculator circle
+      if (dist <= hoverRadius) {
+        isDragging = true;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        dragStartRotX = rotX;
+        dragStartRotY = rotY;
+        canvas.style.cursor = 'grabbing';
+        try {
+          canvas.setPointerCapture(e.pointerId);
+        } catch {}
+      }
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
       const mouseX = (e.clientX - rect.left) * scaleX;
@@ -470,15 +502,20 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
       const dy = mouseY - centerY;
       const dist = Math.hypot(dx, dy);
 
-      // Limited circle strictly bounding the calculator position (radius 180px)
-      const hoverRadius = 180;
-
-      if (dist <= hoverRadius) {
-        canvas.style.cursor = 'pointer';
+      if (isDragging) {
+        const deltaX = e.clientX - dragStartX;
+        const deltaY = e.clientY - dragStartY;
+        // Full 3D rotation according to mouse drag (wide 180° / 360° motion)
+        targetRotY = dragStartRotY + deltaX * 0.015;
+        targetRotX = Math.max(-0.6, Math.min(1.2, dragStartRotX - deltaY * 0.012));
+        targetHoverIntensity = 1.0;
+      } else if (dist <= hoverRadius) {
+        canvas.style.cursor = 'grab';
         const nx = dx / hoverRadius;
         const ny = dy / hoverRadius;
-        targetRotY = baseRotY + nx * 0.18;
-        targetRotX = baseRotX - ny * 0.14;
+        // Full 3D movement up, down, left, right in specific circle
+        targetRotY = baseRotY + nx * 0.85;
+        targetRotX = baseRotX - ny * 0.65;
         targetHoverIntensity = 1.0;
       } else {
         canvas.style.cursor = 'default';
@@ -488,21 +525,50 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
       }
     };
 
-    const handleMouseLeave = () => {
-      canvas.style.cursor = 'default';
-      targetRotY = baseRotY;
-      targetRotX = baseRotX;
-      targetHoverIntensity = 0.0;
+    const handlePointerUp = (e: PointerEvent) => {
+      if (isDragging) {
+        isDragging = false;
+        try {
+          canvas.releasePointerCapture(e.pointerId);
+        } catch {}
+      }
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
+      const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
+      const dist = Math.hypot(mouseX - width / 2, mouseY - height / 2);
+      if (dist <= hoverRadius) {
+        canvas.style.cursor = 'grab';
+      } else {
+        canvas.style.cursor = 'default';
+        targetRotY = baseRotY;
+        targetRotX = baseRotX;
+        targetHoverIntensity = 0.0;
+      }
     };
 
-    canvas.addEventListener('mousemove', handleMouseMove);
-    canvas.addEventListener('mouseleave', handleMouseLeave);
+    const handlePointerLeave = () => {
+      if (!isDragging) {
+        canvas.style.cursor = 'default';
+        targetRotY = baseRotY;
+        targetRotX = baseRotX;
+        targetHoverIntensity = 0.0;
+      }
+    };
+
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('pointermove', handlePointerMove);
+    canvas.addEventListener('pointerup', handlePointerUp);
+    canvas.addEventListener('pointercancel', handlePointerUp);
+    canvas.addEventListener('pointerleave', handlePointerLeave);
 
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
-      canvas.removeEventListener('mousemove', handleMouseMove);
-      canvas.removeEventListener('mouseleave', handleMouseLeave);
+      canvas.removeEventListener('pointerdown', handlePointerDown);
+      canvas.removeEventListener('pointermove', handlePointerMove);
+      canvas.removeEventListener('pointerup', handlePointerUp);
+      canvas.removeEventListener('pointercancel', handlePointerUp);
+      canvas.removeEventListener('pointerleave', handlePointerLeave);
     };
   }, []);
 
