@@ -80,9 +80,9 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
       ['0', '.', 'AUTO', '='],
     ];
 
-    // Reverted to previous isometric 3D perspective (0.38 and -0.32)
-    const baseRotX = 0.38;
-    const baseRotY = -0.32;
+    // Upright balanced 3D perspective (user's preferred default landing position)
+    const baseRotX = 0.04;
+    const baseRotY = -0.03;
     let rotX = baseRotX;
     let rotY = baseRotY;
     let targetRotX = baseRotX;
@@ -507,15 +507,15 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
         const deltaY = e.clientY - dragStartY;
         // Full 3D rotation according to mouse drag (wide 180° / 360° motion)
         targetRotY = dragStartRotY + deltaX * 0.015;
-        targetRotX = Math.max(-0.6, Math.min(1.2, dragStartRotX - deltaY * 0.012));
+        targetRotX = Math.max(-0.8, Math.min(1.2, dragStartRotX - deltaY * 0.012));
         targetHoverIntensity = 1.0;
       } else if (dist <= hoverRadius) {
         canvas.style.cursor = 'grab';
         const nx = dx / hoverRadius;
         const ny = dy / hoverRadius;
-        // Full 3D movement up, down, left, right in specific circle
-        targetRotY = baseRotY + nx * 0.85;
-        targetRotX = baseRotX - ny * 0.65;
+        // Subtle, fluid 3D hover response keeping the elegant upright posture
+        targetRotY = baseRotY + nx * 0.22;
+        targetRotX = baseRotX - ny * 0.16;
         targetHoverIntensity = 1.0;
       } else {
         canvas.style.cursor = 'default';
