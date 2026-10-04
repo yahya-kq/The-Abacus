@@ -37,7 +37,7 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
       { mode: 'HOURLY TIP RATE', value: '$7.69 / hr', sub: 'Calculated Allocation Rate', activeKey: '=' },
       { mode: 'SERVER SHARE', value: '$1,059.44', sub: '50% Pool Distributed', activeKey: '%' },
       { mode: 'BARISTA SHARE', value: '$1,059.44', sub: '50% Pool Distributed', activeKey: '%' },
-      { mode: 'NET SALES CYCLE', value: '$14,820.50', sub: 'Total Hospitality Volume', activeKey: '+' },
+      { mode: 'NET SALES CYCLE', value: '$14,820.50', sub: 'Total Sales Volume', activeKey: '+' },
       { mode: 'RECONCILIATION', value: '100% BALANCED', sub: '$0.00 Variance Guaranteed', activeKey: '=' },
     ];
 
@@ -627,7 +627,7 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
               marginBottom: '36px',
             }}
           >
-            Configurable role weights, multi-channel tip pooling, and instant client-ready reporting engineered for flawless hospitality operations.
+            Configurable role weights, multi-channel tip pooling, and instant client-ready reports built for fast, fair restaurant payouts.
           </p>
 
           {/* Prominent Call-to-Action Button */}

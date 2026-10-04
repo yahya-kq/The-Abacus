@@ -1,6 +1,6 @@
 # The Abacus - Restaurant Tip Calculation System
 
-The Abacus is a restaurant-based tip calculation system designed for US dining and hospitality operations. The application automates shift aggregation, rule-based tip contributions, multi-method pool distribution, and payroll reporting.
+The Abacus is a restaurant-based tip calculation system designed for modern dining and restaurant operations. The application automates shift aggregation, rule-based tip contributions, multi-method pool distribution, and payroll reporting.
 
 The system supports diverse restaurant tip pool structures, including uniform hourly pooling, weighted role points, and role percentage splits, with support for direct tip retention, sales-based contributions, and multi-channel order sources (Self-Order Kiosks, Online Orders, Table QR, and Third-Party Delivery).
 
