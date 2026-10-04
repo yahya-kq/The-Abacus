@@ -188,7 +188,7 @@ export function TimeCardsPage({
           marginBottom: '24px',
         }}
       >
-        <div className="glass-panel" style={{ padding: '18px 20px' }}>
+        <div className="glass-panel stat-card-hover" style={{ padding: '18px 20px' }}>
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
             Filtered Shifts
           </span>
@@ -197,7 +197,7 @@ export function TimeCardsPage({
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '18px 20px' }}>
+        <div className="glass-panel stat-card-hover" style={{ padding: '18px 20px' }}>
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
             Total Hours
           </span>
@@ -206,7 +206,7 @@ export function TimeCardsPage({
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '18px 20px' }}>
+        <div className="glass-panel stat-card-hover" style={{ padding: '18px 20px' }}>
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
             Total Net Sales
           </span>
@@ -215,7 +215,7 @@ export function TimeCardsPage({
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '18px 20px' }}>
+        <div className="glass-panel stat-card-hover" style={{ padding: '18px 20px' }}>
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
             Total Collected Tips
           </span>
@@ -225,7 +225,7 @@ export function TimeCardsPage({
         </div>
 
         {totalGratuity > 0 && (
-          <div className="glass-panel" style={{ padding: '18px 20px' }}>
+          <div className="glass-panel stat-card-hover" style={{ padding: '18px 20px' }}>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
               Auto Gratuity
             </span>
@@ -253,7 +253,7 @@ export function TimeCardsPage({
           />
           <input
             type="text"
-            className="input-clean"
+            className="input-clean filter-input-hover"
             placeholder="Search employee by name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -264,7 +264,7 @@ export function TimeCardsPage({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Filter size={16} color="var(--text-muted)" />
           <select
-            className="input-clean"
+            className="input-clean filter-input-hover"
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value)}
             style={{ minWidth: '150px' }}

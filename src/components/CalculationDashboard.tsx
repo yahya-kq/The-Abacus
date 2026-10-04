@@ -70,9 +70,15 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
             <h1 style={{ fontSize: '1.9rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
               Calculation Dashboard
             </h1>
-            <span className="badge badge-indigo">
-              {result.distributionMethod} Distribution
-            </span>
+            {result.distributionMethod ? (
+              <span className="badge badge-indigo">
+                {result.distributionMethod} Distribution
+              </span>
+            ) : (
+              <span className="badge badge-gold">
+                No Method Selected
+              </span>
+            )}
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', marginTop: '4px' }}>
             {result.restaurantName || 'Active Tip Pool'}{result.startDate && result.endDate ? ` | ${formatDisplayDate(result.startDate)} — ${formatDisplayDate(result.endDate)}` : ''}
@@ -114,7 +120,7 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
           marginBottom: '28px',
         }}
       >
-        <div className="glass-panel" style={{ padding: '20px 22px' }}>
+        <div className="glass-panel stat-card-hover" style={{ padding: '20px 22px' }}>
           <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
             Total Pool Distributed
           </span>
@@ -126,7 +132,7 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
           </span>
         </div>
 
-        <div className="glass-panel" style={{ padding: '20px 22px' }}>
+        <div className="glass-panel stat-card-hover" style={{ padding: '20px 22px' }}>
           <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
             Recipient Hours
           </span>
@@ -138,7 +144,7 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
           </span>
         </div>
 
-        <div className="glass-panel" style={{ padding: '20px 22px' }}>
+        <div className="glass-panel stat-card-hover" style={{ padding: '20px 22px' }}>
           <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
             Average Rate / Hr
           </span>
@@ -150,7 +156,7 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
           </span>
         </div>
 
-        <div className="glass-panel" style={{ padding: '20px 22px' }}>
+        <div className="glass-panel stat-card-hover" style={{ padding: '20px 22px' }}>
           <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
             Total Kept Tips
           </span>
@@ -163,7 +169,7 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
         </div>
 
         {(result.totalGratuity || 0) > 0 && (
-          <div className="glass-panel" style={{ padding: '20px 22px' }}>
+          <div className="glass-panel stat-card-hover" style={{ padding: '20px 22px' }}>
             <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
               Auto Gratuity
             </span>
@@ -176,7 +182,7 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
           </div>
         )}
 
-        <div className="glass-panel" style={{ padding: '20px 22px', border: '1.5px solid rgba(108, 99, 255, 0.45)' }}>
+        <div className="glass-panel stat-card-hover" style={{ padding: '20px 22px', border: '1.5px solid rgba(108, 99, 255, 0.45)' }}>
           <span style={{ fontSize: '0.76rem', color: '#9ca3ff', fontWeight: 700, textTransform: 'uppercase' }}>
             Total Overall Payout
           </span>

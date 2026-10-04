@@ -2,8 +2,13 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Abacus — The Restaurant Tip Calculator',
+  title: 'Abacus | The Tip Calculator',
   description: 'Precision restaurant tip pooling and calculation engine. Configurable role weights, multi-channel tip pooling, and transparent reporting.',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

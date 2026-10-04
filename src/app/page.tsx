@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { AlertTriangle, RotateCcw } from 'lucide-react';
 import { Sidebar, NavScreen } from '../components/Sidebar';
 import { LandingHero } from '../components/LandingHero';
 import { SetupPage } from '../components/SetupPage';
@@ -19,6 +20,7 @@ export default function Home() {
   const [currentScreen, setCurrentScreen] = useState<NavScreen>('hero');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isHardRefreshModalOpen, setIsHardRefreshModalOpen] = useState(false);
 
   // Pool Settings state (Clean slate: user sets up restaurant, cycle dates, and rules)
   const [settings, setSettings] = useState<TipPoolSettings>({
@@ -37,7 +39,7 @@ export default function Home() {
       thirdParty: { enabled: false, percent: 100, source: 'All' },
     },
     customSources: [],
-    distributionMethod: 'Equally',
+    distributionMethod: '',
     recipients: [],
     businessDayCutoffHour: 12,
     timezone: 'America/New_York',
@@ -169,12 +171,16 @@ export default function Home() {
         thirdParty: { enabled: false, percent: 100, source: 'All' },
       },
       customSources: [],
-      distributionMethod: 'Equally',
+      distributionMethod: '',
       recipients: [],
       businessDayCutoffHour: 12,
       timezone: 'America/New_York',
     });
     showToast('Hard Refresh Complete: All shifts, files, and temporary inputs cleared.');
+  };
+
+  const requestHardRefresh = () => {
+    setIsHardRefreshModalOpen(true);
   };
 
   // Handle other tip source loaded from file (.xlsx, .csv)
@@ -230,7 +236,7 @@ export default function Home() {
           onNavigate={(screen) => setCurrentScreen(screen)}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          onHardRefresh={handleHardRefresh}
+          onHardRefresh={requestHardRefresh}
         />
       )}
 
@@ -362,7 +368,7 @@ export default function Home() {
               onShiftsLoaded={handleShiftsLoaded}
               dailyTipInputs={dailyTipInputs}
               onDailyInputChange={handleDailyInputChange}
-              onHardRefresh={handleHardRefresh}
+              onHardRefresh={requestHardRefresh}
               onRunCalculation={() => setCurrentScreen('dashboard')}
               timeCardFileName={timeCardFileName}
               otherTipFileName={otherTipFileName}
@@ -382,11 +388,119 @@ export default function Home() {
           {currentScreen === 'dashboard' && (
             <CalculationDashboard
               result={calculationResult}
-              onHardRefresh={handleHardRefresh}
+              onHardRefresh={requestHardRefresh}
             />
           )}
         </main>
       </div>
+
+      {/* Confirmation Warning Modal for Hard Refresh */}
+      {isHardRefreshModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(5, 4, 18, 0.85)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px',
+          }}
+        >
+          <div
+            className="glass-panel modal-scale-in"
+            style={{
+              maxWidth: '480px',
+              width: '100%',
+              padding: '28px',
+              borderRadius: '16px',
+              border: '1.5px solid rgba(255, 95, 109, 0.45)',
+              background: '#151233',
+              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(255, 95, 109, 0.25)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '16px' }}>
+              <div
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '12px',
+                  background: 'rgba(255, 95, 109, 0.16)',
+                  border: '1px solid rgba(255, 95, 109, 0.35)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ff5f6d',
+                  flexShrink: 0,
+                }}
+              >
+                <AlertTriangle size={24} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#ffffff', margin: 0 }}>
+                  Confirm Hard Refresh
+                </h3>
+                <p style={{ fontSize: '0.88rem', color: '#c5c7e8', marginTop: '6px', lineHeight: 1.5 }}>
+                  Performing a hard refresh will permanently clear all imported time cards, shift records, other tip sources, and reset your setup back to clean defaults.
+                </p>
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: '12px 14px',
+                borderRadius: '8px',
+                background: 'rgba(255, 95, 109, 0.1)',
+                border: '1px solid rgba(255, 95, 109, 0.25)',
+                color: '#ff9da7',
+                fontSize: '0.84rem',
+                fontWeight: 500,
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <span>⚠️ This action cannot be undone. Are you sure you want to clear everything?</span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setIsHardRefreshModalOpen(false)}
+                style={{ padding: '9px 18px' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-danger"
+                onClick={() => {
+                  setIsHardRefreshModalOpen(false);
+                  handleHardRefresh();
+                }}
+                style={{
+                  padding: '9px 20px',
+                  fontWeight: 600,
+                  background: '#ff5f6d',
+                  color: '#ffffff',
+                  border: 'none',
+                  boxShadow: '0 4px 14px rgba(255, 95, 109, 0.4)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <RotateCcw size={15} />
+                <span>Yes, Clear Everything</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

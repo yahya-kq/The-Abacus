@@ -1,7 +1,7 @@
 export type TipSystemType = 'equal' | 'pooling' | 'percentage' | 'points';
 
 export type PoolContributionMethod = 'percentage_of_tips' | 'percentage_of_sales';
-export type PoolDistributionMethod = 'Equally' | 'Percentage' | 'Points';
+export type PoolDistributionMethod = 'Equally' | 'Percentage' | 'Points' | '';
 
 export interface ContributorConfig {
   id: string;

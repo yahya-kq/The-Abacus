@@ -338,7 +338,7 @@ export function calculateTipCycle(
   return {
     poolName: settings.poolName || settings.restaurantName || 'Tip Pool',
     restaurantName: settings.restaurantName || 'Tip Pool',
-    distributionMethod: settings.distributionMethod || 'Equally',
+    distributionMethod: settings.distributionMethod || '',
     splitSetup: (settings.splitSetup || 'percentage_of_tips') as PoolContributionMethod,
     startDate,
     endDate,

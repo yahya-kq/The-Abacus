@@ -150,6 +150,35 @@ export function SetupPage({
             parsed.detectedStartDate,
             parsed.detectedEndDate
           );
+
+          // Auto-fetch roles from time cards if contributors or recipients are currently empty
+          const newRoles = Array.from(new Set(parsed.shifts.map((s) => s.role))).filter(Boolean);
+          if (newRoles.length > 0) {
+            const updatedSettings = { ...settings };
+            let changed = false;
+            if (updatedSettings.contributors.length === 0) {
+              updatedSettings.contributors = newRoles.map((r, i) => ({
+                id: `contrib-${Date.now()}-${i}`,
+                role: r,
+                contributionPercent: updatedSettings.splitSetup === 'percentage_of_sales' ? 5 : 100,
+                source: 'All',
+              }));
+              changed = true;
+            }
+            if (updatedSettings.recipients.length === 0) {
+              const eqPercent = Math.round((100 / newRoles.length) * 10) / 10;
+              updatedSettings.recipients = newRoles.map((r, i) => ({
+                id: `recip-${Date.now()}-${i}`,
+                role: r,
+                distributionPercent: eqPercent,
+                pointsPerHour: 1,
+              }));
+              changed = true;
+            }
+            if (changed) {
+              onUpdateSettings(updatedSettings);
+            }
+          }
         } catch (err: any) {
           setUploadError(`Failed to parse CSV: ${err.message}`);
         }
@@ -171,6 +200,35 @@ export function SetupPage({
             parsed.detectedStartDate,
             parsed.detectedEndDate
           );
+
+          // Auto-fetch roles from time cards if contributors or recipients are currently empty
+          const newRoles = Array.from(new Set(parsed.shifts.map((s) => s.role))).filter(Boolean);
+          if (newRoles.length > 0) {
+            const updatedSettings = { ...settings };
+            let changed = false;
+            if (updatedSettings.contributors.length === 0) {
+              updatedSettings.contributors = newRoles.map((r, i) => ({
+                id: `contrib-${Date.now()}-${i}`,
+                role: r,
+                contributionPercent: updatedSettings.splitSetup === 'percentage_of_sales' ? 5 : 100,
+                source: 'All',
+              }));
+              changed = true;
+            }
+            if (updatedSettings.recipients.length === 0) {
+              const eqPercent = Math.round((100 / newRoles.length) * 10) / 10;
+              updatedSettings.recipients = newRoles.map((r, i) => ({
+                id: `recip-${Date.now()}-${i}`,
+                role: r,
+                distributionPercent: eqPercent,
+                pointsPerHour: 1,
+              }));
+              changed = true;
+            }
+            if (changed) {
+              onUpdateSettings(updatedSettings);
+            }
+          }
         } catch (err: any) {
           setUploadError(`Failed to parse Excel file: ${err.message}`);
         }
@@ -281,6 +339,68 @@ export function SetupPage({
       },
     ];
     onUpdateSettings({ ...settings, recipients: updated });
+  };
+
+  // Auto-fetch all roles from time cards into contributors
+  const autoFetchAllRolesToContributors = () => {
+    if (detectedRoles.length === 0) return;
+    const existingRoles = new Set(settings.contributors.map((c) => c.role.toLowerCase()));
+    const missingRoles = detectedRoles.filter((r) => !existingRoles.has(r.toLowerCase()));
+    if (missingRoles.length === 0) return;
+
+    const newEntries = missingRoles.map((r, i) => ({
+      id: `contrib-${Date.now()}-${i}-${Math.random()}`,
+      role: r,
+      contributionPercent: settings.splitSetup === 'percentage_of_sales' ? 5 : 100,
+      source: 'All',
+    }));
+
+    onUpdateSettings({
+      ...settings,
+      contributors: [...settings.contributors, ...newEntries],
+    });
+  };
+
+  // Auto-fetch all roles from time cards into recipients
+  const autoFetchAllRolesToRecipients = () => {
+    if (detectedRoles.length === 0) return;
+    const existingRoles = new Set(settings.recipients.map((r) => r.role.toLowerCase()));
+    const missingRoles = detectedRoles.filter((r) => !existingRoles.has(r.toLowerCase()));
+    if (missingRoles.length === 0) return;
+
+    const totalCount = settings.recipients.length + missingRoles.length;
+    const eqPercent = totalCount > 0 ? Math.round((100 / totalCount) * 10) / 10 : 0;
+
+    const newEntries = missingRoles.map((r, i) => ({
+      id: `recip-${Date.now()}-${i}-${Math.random()}`,
+      role: r,
+      distributionPercent: eqPercent,
+      pointsPerHour: 1,
+    }));
+
+    onUpdateSettings({
+      ...settings,
+      recipients: [...settings.recipients, ...newEntries],
+    });
+  };
+
+  // Split setup selection: auto-fetches roles if contributors list is currently empty
+  const handleSelectSplitSetup = (method: 'percentage_of_tips' | 'percentage_of_sales') => {
+    if (settings.contributors.length === 0 && detectedRoles.length > 0) {
+      const autoContributors = detectedRoles.map((r, i) => ({
+        id: `contrib-${Date.now()}-${i}`,
+        role: r,
+        contributionPercent: method === 'percentage_of_tips' ? 100 : 5,
+        source: 'All',
+      }));
+      onUpdateSettings({
+        ...settings,
+        splitSetup: method,
+        contributors: autoContributors,
+      });
+    } else {
+      onUpdateSettings({ ...settings, splitSetup: method });
+    }
   };
 
   // Calculate total percentage for recipients if method is Percentage
@@ -737,6 +857,7 @@ export function SetupPage({
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
               <div
+                className="method-card-hover"
                 style={{
                   padding: '14px',
                   borderRadius: 'var(--radius-sm)',
@@ -747,17 +868,18 @@ export function SetupPage({
                   alignItems: 'center',
                   gap: '10px',
                 }}
-                onClick={() => onUpdateSettings({ ...settings, splitSetup: 'percentage_of_sales' })}
+                onClick={() => handleSelectSplitSetup('percentage_of_sales')}
               >
                 <input
                   type="radio"
                   checked={settings.splitSetup === 'percentage_of_sales'}
-                  onChange={() => onUpdateSettings({ ...settings, splitSetup: 'percentage_of_sales' })}
+                  onChange={() => handleSelectSplitSetup('percentage_of_sales')}
                 />
                 <span style={{ fontSize: '0.92rem', color: '#ffffff', fontWeight: 500 }}>Percentage of Sales</span>
               </div>
 
               <div
+                className="method-card-hover"
                 style={{
                   padding: '14px',
                   borderRadius: 'var(--radius-sm)',
@@ -768,12 +890,12 @@ export function SetupPage({
                   alignItems: 'center',
                   gap: '10px',
                 }}
-                onClick={() => onUpdateSettings({ ...settings, splitSetup: 'percentage_of_tips' })}
+                onClick={() => handleSelectSplitSetup('percentage_of_tips')}
               >
                 <input
                   type="radio"
                   checked={settings.splitSetup === 'percentage_of_tips'}
-                  onChange={() => onUpdateSettings({ ...settings, splitSetup: 'percentage_of_tips' })}
+                  onChange={() => handleSelectSplitSetup('percentage_of_tips')}
                 />
                 <span style={{ fontSize: '0.92rem', color: '#ffffff', fontWeight: 500 }}>Percentage of Tips</span>
               </div>
@@ -1145,6 +1267,38 @@ export function SetupPage({
                 <span>Add role contributor</span>
               </button>
 
+              {detectedRoles.length > 0 && (
+                <button
+                  onClick={autoFetchAllRolesToContributors}
+                  type="button"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'rgba(0, 229, 163, 0.1)',
+                    border: '1px solid rgba(0, 229, 163, 0.35)',
+                    color: '#00e5a3',
+                    fontSize: '0.84rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: '6px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(0, 229, 163, 0.2)';
+                    e.currentTarget.style.borderColor = '#00e5a3';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(0, 229, 163, 0.1)';
+                    e.currentTarget.style.borderColor = 'rgba(0, 229, 163, 0.35)';
+                  }}
+                >
+                  <Sparkles size={14} />
+                  <span>Auto-Fetch All Roles from Time Cards ({detectedRoles.length})</span>
+                </button>
+              )}
+
               <button
                 onClick={addCustomSource}
                 type="button"
@@ -1183,6 +1337,7 @@ export function SetupPage({
               return (
                 <div
                   key={method}
+                  className="method-card-hover"
                   style={{
                     padding: '14px',
                     borderRadius: 'var(--radius-sm)',
@@ -1206,6 +1361,25 @@ export function SetupPage({
               );
             })}
           </div>
+
+          {!settings.distributionMethod && (
+            <div
+              style={{
+                padding: '12px 16px',
+                borderRadius: '8px',
+                background: 'rgba(246, 196, 69, 0.08)',
+                border: '1px dashed rgba(246, 196, 69, 0.3)',
+                color: '#f6c445',
+                fontSize: '0.84rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '16px',
+              }}
+            >
+              <span>⚠️ No default distribution method selected. Please click Percentage, Points, or Equally above to define distribution rules.</span>
+            </div>
+          )}
         </div>
 
         {/* SECTION 4: Recipients info */}
@@ -1329,25 +1503,59 @@ export function SetupPage({
             ))}
           </div>
 
-          <button
-            onClick={addRecipient}
-            type="button"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: 'transparent',
-              border: 'none',
-              color: '#ff5f6d',
-              fontSize: '0.88rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              padding: '4px 0',
-            }}
-          >
-            <Plus size={16} />
-            <span>Add recipient</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <button
+              onClick={addRecipient}
+              type="button"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'transparent',
+                border: 'none',
+                color: '#ff5f6d',
+                fontSize: '0.88rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                padding: '4px 0',
+              }}
+            >
+              <Plus size={16} />
+              <span>Add recipient</span>
+            </button>
+
+            {detectedRoles.length > 0 && (
+              <button
+                onClick={autoFetchAllRolesToRecipients}
+                type="button"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'rgba(0, 229, 163, 0.1)',
+                  border: '1px solid rgba(0, 229, 163, 0.35)',
+                  color: '#00e5a3',
+                  fontSize: '0.84rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '6px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(0, 229, 163, 0.2)';
+                  e.currentTarget.style.borderColor = '#00e5a3';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(0, 229, 163, 0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(0, 229, 163, 0.35)';
+                }}
+              >
+                <Sparkles size={14} />
+                <span>Auto-Fetch All Roles from Time Cards ({detectedRoles.length})</span>
+              </button>
+            )}
+          </div>
         </div>
 
       {/* Datalist for fast role auto-complete while preserving free text typing */}
