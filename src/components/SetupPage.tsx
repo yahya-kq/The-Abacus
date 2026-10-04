@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   SlidersHorizontal,
   Plus,
@@ -15,6 +15,7 @@ import {
   Clock,
   Sparkles,
   ArrowRight,
+  X,
 } from 'lucide-react';
 import {
   TipPoolSettings,
@@ -34,6 +35,7 @@ import {
   getDayOfWeek,
   parseFileNameMetadata,
 } from '../lib/parser';
+import { generateDateRange } from '../lib/calculator';
 
 interface SetupPageProps {
   settings: TipPoolSettings;
@@ -47,6 +49,8 @@ interface SetupPageProps {
   timeCardFileName: string | null;
   otherTipFileName?: string | null;
   onOtherTipsLoaded?: (dailyTips: Record<string, DailyTipInput>, filename: string, startDate?: string, endDate?: string, restaurantName?: string) => void;
+  onRemoveTimeCards?: () => void;
+  onRemoveOtherTips?: () => void;
 }
 
 export function SetupPage({
@@ -61,6 +65,8 @@ export function SetupPage({
   timeCardFileName,
   otherTipFileName,
   onOtherTipsLoaded,
+  onRemoveTimeCards,
+  onRemoveOtherTips,
 }: SetupPageProps) {
   const timeCardInputRef = useRef<HTMLInputElement>(null);
   const otherTipInputRef = useRef<HTMLInputElement>(null);
@@ -73,6 +79,36 @@ export function SetupPage({
   const allAvailableRoles = Array.from(new Set([...detectedRoles, ...defaultRolesList]));
 
   const [isOcrLoading, setIsOcrLoading] = useState(false);
+
+  // Sorted daily entries in strict chronological order (e.g. Sep 07, Sep 08, Sep 09...)
+  const sortedDailyEntries = useMemo(() => {
+    const dateSet = new Set<string>();
+    if (settings.startDate && settings.endDate) {
+      const range = generateDateRange(settings.startDate, settings.endDate);
+      range.forEach((d) => dateSet.add(d));
+    }
+    Object.keys(dailyTipInputs).forEach((d) => dateSet.add(d));
+    shifts.forEach((s) => {
+      if (s.businessDate) dateSet.add(s.businessDate);
+    });
+
+    const sortedList = Array.from(dateSet).sort((a, b) => a.localeCompare(b));
+    return sortedList.map((dt) => {
+      const existing = dailyTipInputs[dt];
+      if (existing) return existing;
+      return {
+        date: dt,
+        displayDate: formatDisplayDate(dt),
+        dayOfWeek: getDayOfWeek(dt),
+        webDashTips: 0,
+        onlineTips: 0,
+        doorDashTips: 0,
+        kioskTips: 0,
+        otherTips: 0,
+        totalTips: 0,
+      };
+    });
+  }, [settings.startDate, settings.endDate, dailyTipInputs, shifts]);
 
   // Handle other tip source file upload (Excel, CSV, Text, or Screenshot Images)
   const handleOtherTipUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -761,23 +797,64 @@ export function SetupPage({
               </p>
               {timeCardFileName ? (
                 <div style={{ marginTop: '8px' }}>
-                  <span
+                  <div
                     style={{
-                      display: 'inline-block',
-                      maxWidth: '90%',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      fontSize: '0.8rem',
-                      padding: '3px 10px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      maxWidth: '92%',
+                      padding: '4px 10px',
                       borderRadius: 'var(--radius-pill)',
                       background: 'rgba(108, 99, 255, 0.25)',
                       color: '#c5c7e8',
-                      fontWeight: 500,
                     }}
                   >
-                    {timeCardFileName}
-                  </span>
+                    <span
+                      style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        fontSize: '0.82rem',
+                        fontWeight: 500,
+                      }}
+                    >
+                      {timeCardFileName}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (timeCardInputRef.current) timeCardInputRef.current.value = '';
+                        onRemoveTimeCards?.();
+                      }}
+                      title="Remove time cards file"
+                      style={{
+                        background: 'rgba(255, 95, 109, 0.25)',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '20px',
+                        height: '20px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        color: '#ff5f6d',
+                        padding: 0,
+                        flexShrink: 0,
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 95, 109, 0.45)';
+                        e.currentTarget.style.color = '#ffffff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 95, 109, 0.25)';
+                        e.currentTarget.style.color = '#ff5f6d';
+                      }}
+                    >
+                      <X size={12} strokeWidth={2.5} />
+                    </button>
+                  </div>
                   <p style={{ color: '#00e5a3', fontSize: '0.8rem', marginTop: '6px', fontWeight: 500 }}>
                     ✓ {shifts.length} shifts active
                   </p>
@@ -843,25 +920,66 @@ export function SetupPage({
                 </div>
               ) : otherTipFileName ? (
                 <div style={{ marginTop: '8px' }}>
-                  <span
+                  <div
                     style={{
-                      display: 'inline-block',
-                      maxWidth: '90%',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      fontSize: '0.8rem',
-                      padding: '3px 10px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      maxWidth: '92%',
+                      padding: '4px 10px',
                       borderRadius: 'var(--radius-pill)',
                       background: 'rgba(0, 229, 163, 0.2)',
                       color: '#00e5a3',
-                      fontWeight: 500,
                     }}
                   >
-                    {otherTipFileName}
-                  </span>
+                    <span
+                      style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        fontSize: '0.82rem',
+                        fontWeight: 500,
+                      }}
+                    >
+                      {otherTipFileName}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (otherTipInputRef.current) otherTipInputRef.current.value = '';
+                        onRemoveOtherTips?.();
+                      }}
+                      title="Remove other tips file"
+                      style={{
+                        background: 'rgba(255, 95, 109, 0.25)',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '20px',
+                        height: '20px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        color: '#ff5f6d',
+                        padding: 0,
+                        flexShrink: 0,
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 95, 109, 0.45)';
+                        e.currentTarget.style.color = '#ffffff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 95, 109, 0.25)';
+                        e.currentTarget.style.color = '#ff5f6d';
+                      }}
+                    >
+                      <X size={12} strokeWidth={2.5} />
+                    </button>
+                  </div>
                   <p style={{ color: '#00e5a3', fontSize: '0.8rem', marginTop: '6px', fontWeight: 500 }}>
-                    ✓ {Object.keys(dailyTipInputs).length} daily records updated
+                    ✓ {sortedDailyEntries.length} daily records updated
                   </p>
                 </div>
               ) : (
@@ -898,7 +1016,7 @@ export function SetupPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.values(dailyTipInputs).map((d) => (
+                  {sortedDailyEntries.map((d) => (
                     <tr key={d.date}>
                       <td style={{ fontWeight: 600 }}>{formatDisplayDate(d.date)}</td>
                       <td style={{ color: 'var(--text-muted)' }}>{d.dayOfWeek}</td>

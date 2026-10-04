@@ -349,11 +349,11 @@ export default function Home() {
           otherTips: 0,
           totalTips: 0,
         };
-        const webDash = val.webDashTips !== undefined && val.webDashTips > 0 ? val.webDashTips : (existing.webDashTips || 0);
-        const online = val.onlineTips !== undefined && val.onlineTips > 0 ? val.onlineTips : (existing.onlineTips || 0);
-        const doorDash = val.doorDashTips !== undefined && val.doorDashTips > 0 ? val.doorDashTips : (existing.doorDashTips || 0);
-        const kiosk = val.kioskTips !== undefined && val.kioskTips > 0 ? val.kioskTips : (existing.kioskTips || 0);
-        const other = val.otherTips !== undefined && val.otherTips > 0 ? val.otherTips : (existing.otherTips || 0);
+        const webDash = (val.webDashTips !== undefined && val.webDashTips > 0) ? val.webDashTips : (existing.webDashTips || 0);
+        const online = val.onlineTips !== undefined ? val.onlineTips : 0;
+        const doorDash = val.doorDashTips !== undefined ? val.doorDashTips : 0;
+        const kiosk = val.kioskTips !== undefined ? val.kioskTips : 0;
+        const other = val.otherTips !== undefined ? val.otherTips : 0;
         merged[date] = {
           ...existing,
           webDashTips: webDash,
@@ -368,6 +368,61 @@ export default function Home() {
     });
 
     showToast(`Loaded other tip source from ${fname}`);
+  };
+
+  // Remove Time Cards file
+  const handleRemoveTimeCards = () => {
+    setTimeCardFileName(null);
+    setShifts([]);
+    if (typeof document !== 'undefined') {
+      const inputs = document.querySelectorAll('input[type="file"]');
+      inputs.forEach((inp) => {
+        (inp as HTMLInputElement).value = '';
+      });
+    }
+    setDailyTipInputs((prev) => {
+      const updated = { ...prev };
+      for (const [date, val] of Object.entries(updated)) {
+        updated[date] = {
+          ...val,
+          webDashTips: 0,
+          totalTips: Math.round((
+            (val.onlineTips || 0) +
+            (val.doorDashTips || 0) +
+            (val.kioskTips || 0) +
+            (val.otherTips || 0)
+          ) * 100) / 100,
+        };
+      }
+      return updated;
+    });
+    showToast('Time cards file removed.');
+  };
+
+  // Remove Other Tip Source file
+  const handleRemoveOtherTips = () => {
+    setOtherTipFileName(null);
+    if (typeof document !== 'undefined') {
+      const inputs = document.querySelectorAll('input[type="file"]');
+      inputs.forEach((inp) => {
+        (inp as HTMLInputElement).value = '';
+      });
+    }
+    setDailyTipInputs((prev) => {
+      const updated = { ...prev };
+      for (const [date, val] of Object.entries(updated)) {
+        updated[date] = {
+          ...val,
+          onlineTips: 0,
+          doorDashTips: 0,
+          kioskTips: 0,
+          otherTips: 0,
+          totalTips: val.webDashTips || 0,
+        };
+      }
+      return updated;
+    });
+    showToast('Other tip source file removed.');
   };
 
   // Instant Memoized Calculation Result
@@ -533,6 +588,8 @@ export default function Home() {
               timeCardFileName={timeCardFileName}
               otherTipFileName={otherTipFileName}
               onOtherTipsLoaded={handleOtherTipsLoaded}
+              onRemoveTimeCards={handleRemoveTimeCards}
+              onRemoveOtherTips={handleRemoveOtherTips}
             />
           )}
 
