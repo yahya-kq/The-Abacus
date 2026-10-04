@@ -80,9 +80,15 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
       ['0', '.', 'AUTO', '='],
     ];
 
-    // Stable, fixed isometric 3D perspective (no mouse tilt distortion)
-    const rotX = 0.34;
-    const rotY = -0.28;
+    // Proper, upright balanced 3D perspective
+    const baseRotX = 0.04;
+    const baseRotY = -0.03;
+    let rotX = baseRotX;
+    let rotY = baseRotY;
+    let targetRotX = baseRotX;
+    let targetRotY = baseRotY;
+    let hoverIntensity = 0;
+    let targetHoverIntensity = 0;
     let time = 0;
 
     const render = () => {
@@ -101,6 +107,11 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
         keyHighlightIntensity = 1;
       }
       keyHighlightIntensity = Math.max(0.2, keyHighlightIntensity - 0.015);
+
+      // Smooth inertia interpolation for rotation and hover glow
+      rotX += (targetRotX - rotX) * 0.08;
+      rotY += (targetRotY - rotY) * 0.08;
+      hoverIntensity += (targetHoverIntensity - hoverIntensity) * 0.08;
 
       // Subtle, gentle floating bobbing height
       const bobY = Math.sin(time * 0.02) * 8;
@@ -129,8 +140,8 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
 
       // 1. Draw glowing ambient background radial
       const bgGlow = ctx.createRadialGradient(centerX, centerY, 20, centerX, centerY, 320);
-      bgGlow.addColorStop(0, 'rgba(108, 99, 255, 0.22)');
-      bgGlow.addColorStop(0.4, 'rgba(0, 229, 163, 0.08)');
+      bgGlow.addColorStop(0, `rgba(108, 99, 255, ${0.22 + hoverIntensity * 0.16})`);
+      bgGlow.addColorStop(0.4, `rgba(0, 229, 163, ${0.08 + hoverIntensity * 0.12})`);
       bgGlow.addColorStop(1, 'rgba(18, 17, 42, 0)');
       ctx.fillStyle = bgGlow;
       ctx.fillRect(0, 0, width, height);
@@ -237,11 +248,13 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
       ctx.fillStyle = topGrad;
       ctx.fill();
 
-      // Glowing Rim around Top Face
-      ctx.strokeStyle = 'rgba(108, 99, 255, 0.55)';
+      // Glowing Rim around Top Face with dynamic hover intensity
+      ctx.strokeStyle = hoverIntensity > 0.05
+        ? `rgba(0, 229, 163, ${0.55 + hoverIntensity * 0.4})`
+        : 'rgba(108, 99, 255, 0.55)';
       ctx.lineWidth = 2;
-      ctx.shadowColor = '#6c63ff';
-      ctx.shadowBlur = 12;
+      ctx.shadowColor = hoverIntensity > 0.05 ? '#00e5a3' : '#6c63ff';
+      ctx.shadowBlur = 12 + 14 * hoverIntensity;
       ctx.stroke();
       ctx.shadowBlur = 0;
       ctx.restore();
@@ -441,9 +454,55 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
 
     render();
 
+    // Scoped hover interaction: ONLY triggers when cursor is within the limited circle over the calculator
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const mouseX = (e.clientX - rect.left) * scaleX;
+      const mouseY = (e.clientY - rect.top) * scaleY;
+
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const dx = mouseX - centerX;
+      const dy = mouseY - centerY;
+      const dist = Math.hypot(dx, dy);
+
+      // Limited circle strictly bounding the calculator position (radius 180px)
+      const hoverRadius = 180;
+
+      if (dist <= hoverRadius) {
+        canvas.style.cursor = 'pointer';
+        const nx = dx / hoverRadius;
+        const ny = dy / hoverRadius;
+        targetRotY = baseRotY + nx * 0.18;
+        targetRotX = baseRotX - ny * 0.14;
+        targetHoverIntensity = 1.0;
+      } else {
+        canvas.style.cursor = 'default';
+        targetRotY = baseRotY;
+        targetRotX = baseRotX;
+        targetHoverIntensity = 0.0;
+      }
+    };
+
+    const handleMouseLeave = () => {
+      canvas.style.cursor = 'default';
+      targetRotY = baseRotY;
+      targetRotX = baseRotX;
+      targetHoverIntensity = 0.0;
+    };
+
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mouseleave', handleMouseLeave);
+
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
+      canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('mouseleave', handleMouseLeave);
     };
   }, []);
 

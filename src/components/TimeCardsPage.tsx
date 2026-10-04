@@ -325,8 +325,15 @@ export function TimeCardsPage({
           <tbody>
             {paginatedShifts.length === 0 ? (
               <tr>
-                <td colSpan={12} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
-                  No shifts found matching your filter criteria.
+                <td colSpan={12} style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>
+                    {shifts.length === 0 ? 'No Timecard Shifts Loaded' : 'No Matching Shifts Found'}
+                  </div>
+                  <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)' }}>
+                    {shifts.length === 0
+                      ? 'Upload a 7shifts Time Card report in the Setup tab or add manual shifts using the button above.'
+                      : 'Try adjusting your search term or role filter.'}
+                  </p>
                 </td>
               </tr>
             ) : (

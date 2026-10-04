@@ -202,16 +202,33 @@ export default function Home() {
     showToast('Hard Refresh Complete: All shifts, files, and temporary inputs cleared.');
   };
 
-  // Launch Client Demo Mode with full Mission Hill Coffee & Creamery dataset
+  // Launch Client Demo Mode with clean, fully empty workspace
   const handleStartDemoMode = () => {
     setIsDemoMode(true);
-    setSettings(DEMO_SETTINGS);
-    setShifts(DEMO_SHIFTS);
-    setDailyTipInputs(DEMO_DAILY_TIPS);
-    setTimeCardFileName(DEMO_TIME_CARD_FILENAME);
-    setOtherTipFileName(DEMO_OTHER_TIP_FILENAME);
-    setCurrentScreen('dashboard');
-    showToast('Demo Mode Activated: Loaded Mission Hill Coffee & Creamery sample dataset.');
+    setShifts([]);
+    setDailyTipInputs({});
+    setTimeCardFileName(null);
+    setOtherTipFileName(null);
+    setSettings({
+      restaurantName: '',
+      startDate: '',
+      endDate: '',
+      payPeriodType: 'Bi-Weekly',
+      ruleType: 'Daily',
+      sources: {
+        kiosk: { enabled: false, percent: 100 },
+        online: { enabled: false, percent: 100 },
+        qr: { enabled: false, percent: 100 },
+        thirdParty: { enabled: false, percent: 100, source: 'All' },
+      },
+      customSources: [],
+      distributionMethod: '',
+      recipients: [],
+      businessDayCutoffHour: 12,
+      timezone: 'America/New_York',
+    });
+    setCurrentScreen('setup');
+    showToast('Demo Mode Activated: Workspace initialized with a clean, empty state.');
   };
 
   // Exit Client Demo Mode and return to clean landing page
