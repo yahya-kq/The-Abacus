@@ -821,7 +821,7 @@ export function SetupPage({
                     <th>Date</th>
                     <th>Day</th>
                     <th>Online ($)</th>
-                    <th>3PO ($)</th>
+                    <th>DoorDash ($)</th>
                     <th>Kiosk ($)</th>
                     <th>Other ($)</th>
                     <th style={{ textAlign: 'right' }}>Total Input Tips</th>
@@ -995,7 +995,7 @@ export function SetupPage({
                   key={contrib.id}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'minmax(160px, 1.5fr) minmax(120px, 1fr) minmax(140px, 1.2fr) 40px',
+                    gridTemplateColumns: 'minmax(180px, 2fr) minmax(130px, 1fr) 40px',
                     gap: '12px',
                     alignItems: 'center',
                   }}
@@ -1027,16 +1027,6 @@ export function SetupPage({
                       %
                     </span>
                   </div>
-
-                  <select
-                    className="input-clean"
-                    value={contrib.source}
-                    onChange={(e) => updateContributor(idx, 'source', e.target.value)}
-                  >
-                    <option value="All" style={{ background: '#151336' }}>All Sales / Tips</option>
-                    <option value="Food" style={{ background: '#151336' }}>Food Only</option>
-                    <option value="Beverage" style={{ background: '#151336' }}>Beverage Only</option>
-                  </select>
 
                   <button
                     onClick={() => removeContributor(idx)}
@@ -1214,7 +1204,7 @@ export function SetupPage({
                       })
                     }
                   />
-                  <span>3PO</span>
+                  <span>DoorDash</span>
                 </label>
                 <div style={{ position: 'relative' }}>
                   <input

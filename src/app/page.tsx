@@ -429,34 +429,6 @@ export default function Home() {
                   </button>
                 </div>
               )}
-              {timeCardFileName && (
-                <span
-                  style={{
-                    fontSize: '0.8rem',
-                    padding: '4px 10px',
-                    borderRadius: 'var(--radius-pill)',
-                    background: 'rgba(108, 99, 255, 0.15)',
-                    border: '1px solid rgba(108, 99, 255, 0.3)',
-                    color: '#9ca3ff',
-                  }}
-                >
-                  Time Cards: {timeCardFileName}
-                </span>
-              )}
-              {otherTipFileName && (
-                <span
-                  style={{
-                    fontSize: '0.8rem',
-                    padding: '4px 10px',
-                    borderRadius: 'var(--radius-pill)',
-                    background: 'rgba(0, 229, 163, 0.15)',
-                    border: '1px solid rgba(0, 229, 163, 0.3)',
-                    color: '#00e5a3',
-                  }}
-                >
-                  Other Tips: {otherTipFileName}
-                </span>
-              )}
             </div>
           </header>
         )}

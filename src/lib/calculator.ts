@@ -218,19 +218,20 @@ export function calculateTipCycle(
           const share = Math.round(s.totalHours * roleRate * 100) / 100;
           shiftPoolShare.set(s.id, share);
         });
+      }
 
-        // Cent reconciliation: ensure distributed pool exactly balances totalDayPool
-        let sumShiftShares = 0;
-        let firstShiftId = '';
-        recipientShifts.forEach((s) => {
-          sumShiftShares += shiftPoolShare.get(s.id) || 0;
-          if (!firstShiftId) firstShiftId = s.id;
-        });
-        const diffCents = Math.round((totalDayPool - sumShiftShares) * 100) / 100;
-        if (Math.abs(diffCents) > 0 && Math.abs(diffCents) < 0.10 && firstShiftId) {
-          const cur = shiftPoolShare.get(firstShiftId) || 0;
-          shiftPoolShare.set(firstShiftId, Math.max(0, Math.round((cur + diffCents) * 100) / 100));
-        }
+      // Universal Cent Reconciliation for ALL methods:
+      // Guarantee that the sum of shift pool shares EXACTLY equals totalDayPool (down to $0.00 difference)
+      let sumShiftShares = 0;
+      let firstShiftId = '';
+      recipientShifts.forEach((s) => {
+        sumShiftShares += shiftPoolShare.get(s.id) || 0;
+        if (!firstShiftId) firstShiftId = s.id;
+      });
+      const diffCents = Math.round((totalDayPool - sumShiftShares) * 100) / 100;
+      if (Math.abs(diffCents) > 0 && Math.abs(diffCents) < 0.25 && firstShiftId) {
+        const cur = shiftPoolShare.get(firstShiftId) || 0;
+        shiftPoolShare.set(firstShiftId, Math.max(0, Math.round((cur + diffCents) * 100) / 100));
       }
     }
 

@@ -242,14 +242,10 @@ export function generateTipCyclePDF(result: CycleCalculationResult): void {
     // Left
     doc.text(`${result.restaurantName || 'Restaurant'} | Tip Pool Report`, margin, pageHeight - 16);
 
-    // Center Caption: STRICTLY as demanded by user in Audio 4:
+    // Center Caption: STRICTLY as demanded by user:
     // "These tips are calculated using the Tip Calculator."
     doc.setFont('helvetica', 'italic');
     doc.text('These tips are calculated using the Tip Calculator.', pageWidth / 2, pageHeight - 16, { align: 'center' });
-
-    // Right
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Page ${p} of ${totalPages}`, pageWidth - margin, pageHeight - 16, { align: 'right' });
   }
 
   // File naming: strictly [Restaurant_Name]_[StartDate]_to_[EndDate].pdf

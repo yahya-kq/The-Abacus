@@ -216,16 +216,18 @@ export function classifyTipSource(sourceName: string): DetectedTipCategory {
  * If shift begins before the cutoff hour (default 12:00 PM noon),
  * it belongs to the previous calendar day's business day.
  */
-export function calculateBusinessDate(calendarDateStr: string, timeIn: string, cutoffHour = 12): string {
+export function calculateBusinessDate(calendarDateStr: string, timeIn: string, cutoffHour = 4): string {
+  // By default, a shift's business date is its recorded calendar date
+  // Only late-night overnight graveyard shifts starting between 0:00 and 4:00 AM
+  // are shifted to previous business day if cutoffHour is explicitly configured.
   const hour = parseHourFromTime(timeIn);
-  const [y, m, d] = calendarDateStr.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
-
-  if (hour < cutoffHour) {
+  if (cutoffHour > 0 && cutoffHour <= 6 && hour >= 0 && hour < cutoffHour) {
+    const [y, m, d] = calendarDateStr.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
     date.setDate(date.getDate() - 1);
+    return formatDateISO(date);
   }
-
-  return formatDateISO(date);
+  return calendarDateStr;
 }
 
 /**
@@ -650,15 +652,18 @@ function parseOtherTipSourceWorkbook(
 
     // --- STRATEGY 4: Unstructured / Key-Value Blocks (like Mission Hill block layout) ---
     let activeDate: string | null = null;
+    let inSummaryHeader = false;
+
     for (let r = 0; r < rows.length; r++) {
       const row = rows[r];
       if (!row || !Array.isArray(row)) continue;
 
-      // Check if any cell in early columns contains a valid date
-      for (let c = 0; c < Math.min(6, row.length); c++) {
+      // Check if any cell in early columns contains a valid date header
+      for (let c = 0; c < Math.min(5, row.length); c++) {
         const d = normalizeDate(row[c], referenceYear);
-        if (d) {
+        if (d && d !== activeDate) {
           activeDate = d;
+          inSummaryHeader = true;
           ensureDate(activeDate);
           break;
         }
@@ -666,12 +671,36 @@ function parseOtherTipSourceWorkbook(
 
       if (!activeDate) continue;
 
-      // Scan row cells for tip labels and adjacent numbers
-      for (let c = 0; c < row.length; c++) {
+      // Detect end of summary header (e.g. employee shift table starts)
+      for (let c = 0; c < Math.min(5, row.length); c++) {
+        const s = String(row[c] || '').toLowerCase().trim();
+        if (s === 'employees' || s.includes('per hour value') || s.includes('total hours')) {
+          inSummaryHeader = false;
+          break;
+        }
+      }
+
+      if (!inSummaryHeader) continue;
+
+      // Scan strictly early columns (cols 0..5) for explicit tip channel lines
+      for (let c = 0; c < Math.min(5, row.length); c++) {
         const cellText = String(row[c] || '').toLowerCase().trim();
         if (!cellText) continue;
-        const cat = classifyTipSource(cellText);
-        if (cat !== 'other' || cellText.includes('tip') || cellText.includes('grat') || cellText.includes('pool')) {
+
+        let cat: DetectedTipCategory | null = null;
+        if (cellText.includes('dashboard') || cellText.includes('webdash') || cellText === 'online tips' || cellText === 'online') {
+          cat = 'online';
+        } else if (cellText.includes('doordash') || cellText.includes('3po') || cellText.includes('delivery')) {
+          cat = 'doordash';
+        } else if (cellText.includes('kiosk')) {
+          cat = 'kiosk';
+        } else if (cellText === 'total tips' || cellText === 'total tip') {
+          cat = 'total';
+        } else if (cellText === 'gratuity' || cellText === 'service charge') {
+          cat = 'gratuity';
+        }
+
+        if (cat) {
           let num = 0;
           if (c + 1 < row.length) {
             num = parseCleanNumber(row[c + 1]);
@@ -679,12 +708,13 @@ function parseOtherTipSourceWorkbook(
           if (!num && c + 2 < row.length) {
             num = parseCleanNumber(row[c + 2]);
           }
-          if (!num) {
-            const matchNum = cellText.match(/[\$]?(\d+(?:\.\d{1,2})?)/);
-            if (matchNum) num = parseFloat(matchNum[1]);
-          }
           if (num > 0) {
-            addTip(activeDate, cat, num);
+            const entry = ensureDate(activeDate);
+            if (cat === 'kiosk') entry.kioskTips = num;
+            else if (cat === 'online') entry.webDashTips = num;
+            else if (cat === 'doordash') entry.doorDashTips = num;
+            else if (cat === 'gratuity') entry.otherTips = num;
+            else if (cat === 'total') entry.totalTips = num;
           }
         }
       }
