@@ -23,6 +23,7 @@ import {
   DEMO_TIME_CARD_FILENAME,
   DEMO_OTHER_TIP_FILENAME,
 } from '../lib/demoData';
+import { BacktestAuthModal } from '../components/BacktestAuthModal';
 
 export default function Home() {
   const [currentScreen, setCurrentScreen] = useState<NavScreen>('hero');
@@ -30,6 +31,8 @@ export default function Home() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isHardRefreshModalOpen, setIsHardRefreshModalOpen] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [isBacktestAuthenticated, setIsBacktestAuthenticated] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Pool Settings state (Clean slate: user sets up restaurant, cycle dates, and rules)
   const [settings, setSettings] = useState<TipPoolSettings>({
@@ -186,6 +189,9 @@ export default function Home() {
   // Hard Refresh (Irreversible Permanent Purge of state, browser storage, and file inputs)
   const handleHardRefresh = () => {
     setIsDemoMode(false);
+    setIsBacktestAuthenticated(false);
+    setIsAuthModalOpen(false);
+    setCurrentScreen('hero');
     setShifts([]);
     setTimeCardFileName(null);
     setOtherTipFileName(null);
@@ -278,6 +284,37 @@ export default function Home() {
 
   const requestHardRefresh = () => {
     setIsHardRefreshModalOpen(true);
+  };
+
+  // Handle Run a Backtest action (Protected by password authentication)
+  const handleRunBacktestClick = () => {
+    if (isBacktestAuthenticated) {
+      setCurrentScreen('setup');
+    } else {
+      setIsAuthModalOpen(true);
+    }
+  };
+
+  // Called when password ("Go Berserk") is successfully entered
+  const handleAuthSuccess = () => {
+    setIsBacktestAuthenticated(true);
+    setIsAuthModalOpen(false);
+    if (currentScreen === 'hero') {
+      setCurrentScreen('setup');
+      showToast('Authenticated: Backtest workspace loaded.');
+    } else if (currentScreen === 'setup') {
+      setCurrentScreen('summary');
+      showToast('Authenticated: Tip calculation complete.');
+    }
+  };
+
+  // Gate calculation execution: Requires active session authentication or demo mode
+  const handleExecuteCalculation = () => {
+    if (isDemoMode || isBacktestAuthenticated) {
+      setCurrentScreen('summary');
+    } else {
+      setIsAuthModalOpen(true);
+    }
   };
 
   // Handle other tip source loaded from file (.xlsx, .csv)
@@ -572,7 +609,7 @@ export default function Home() {
         <main style={{ flex: 1, minHeight: currentScreen === 'hero' ? '100vh' : 'calc(100vh - 60px)' }}>
           {currentScreen === 'hero' && (
             <LandingHero
-              onStart={() => setCurrentScreen('setup')}
+              onStart={handleRunBacktestClick}
               onViewDemo={handleStartDemoMode}
             />
           )}
@@ -586,7 +623,7 @@ export default function Home() {
               dailyTipInputs={dailyTipInputs}
               onDailyInputChange={handleDailyInputChange}
               onHardRefresh={requestHardRefresh}
-              onRunCalculation={() => setCurrentScreen('summary')}
+              onRunCalculation={handleExecuteCalculation}
               timeCardFileName={timeCardFileName}
               otherTipFileName={otherTipFileName}
               onOtherTipsLoaded={handleOtherTipsLoaded}
@@ -729,6 +766,13 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Password Authentication Modal for Run a Backtest */}
+      <BacktestAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={handleAuthSuccess}
+      />
     </div>
   );
 }

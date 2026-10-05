@@ -757,7 +757,8 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
 
           {/* Prominent Call-to-Action Button */}
           <button
-            id="run-abacus-btn"
+            id="run-backtest-btn"
+            data-id="run-abacus-btn"
             onClick={onStart}
             type="button"
             style={{
@@ -786,7 +787,7 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
               e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.5), 0 0 25px rgba(93, 84, 230, 0.4)';
             }}
           >
-            <span>Run Abacus</span>
+            <span>Run a Backtest</span>
             <ArrowRight size={20} color="#9ca3ff" />
           </button>
         </div>
