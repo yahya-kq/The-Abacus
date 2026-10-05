@@ -148,7 +148,7 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
             Total Tips
           </span>
           <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#9ca3ff', marginTop: '4px' }}>
-            ${(Math.round((result.totalDistributed + result.totalKeptTips) * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ${result.totalDistributed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
 
@@ -274,8 +274,6 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
                   <th>Role</th>
                   <th style={{ textAlign: 'right' }}>Total Hours</th>
                   <th style={{ textAlign: 'right' }}>Total Net Sales</th>
-                  <th style={{ textAlign: 'right' }}>Kept Tips</th>
-                  <th style={{ textAlign: 'right' }}>Pool Share</th>
                   <th style={{ textAlign: 'right' }}>Total Payout</th>
                   <th style={{ textAlign: 'right' }}>Rate ($/hr)</th>
                 </tr>
@@ -283,7 +281,7 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
               <tbody>
                 {filteredEmployees.length === 0 && (
                   <tr>
-                    <td colSpan={9} style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
                       <div style={{ fontSize: '1.05rem', fontWeight: 600, color: '#ffffff', marginBottom: '6px' }}>
                         No Calculation Data Available
                       </div>
@@ -310,13 +308,7 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
                     <td style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>
                       ${emp.totalNetSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
-                    <td style={{ textAlign: 'right', color: '#f6c445' }}>
-                      ${emp.totalKeptTips.toFixed(2)}
-                    </td>
-                    <td style={{ textAlign: 'right', color: '#00e5a3', fontWeight: 600 }}>
-                      ${emp.totalPoolReceived.toFixed(2)}
-                    </td>
-                    <td style={{ textAlign: 'right', color: '#ffffff', fontWeight: 800 }}>
+                    <td style={{ textAlign: 'right', color: '#00e5a3', fontWeight: 800 }}>
                       ${emp.totalPayout.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td style={{ textAlign: 'right', color: '#c5c7e8' }}>
@@ -332,14 +324,8 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
                   <td style={{ textAlign: 'right' }}>
                     ${result.employeeSummaries.reduce((s, e) => s + e.totalNetSales, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
-                  <td style={{ textAlign: 'right', color: '#f6c445' }}>
-                    ${result.totalKeptTips.toFixed(2)}
-                  </td>
                   <td style={{ textAlign: 'right', color: '#00e5a3' }}>
-                    ${result.totalDistributed.toFixed(2)}
-                  </td>
-                  <td style={{ textAlign: 'right', color: '#ffffff' }}>
-                    ${result.totalOverallPayout.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ${result.totalDistributed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     ${result.averagePerHourValue.toFixed(2)}/hr
@@ -536,8 +522,6 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
                             <th>Role</th>
                             <th style={{ textAlign: 'right' }}>Hours</th>
                             <th style={{ textAlign: 'right' }}>Net Sales</th>
-                            <th style={{ textAlign: 'right' }}>Kept Tips</th>
-                            <th style={{ textAlign: 'right' }}>Pool Share</th>
                             <th style={{ textAlign: 'right' }}>Total Payout</th>
                           </tr>
                         </thead>
@@ -550,13 +534,7 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
                               <td style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>
                                 ${(emp.netSale || 0).toFixed(2)}
                               </td>
-                              <td style={{ textAlign: 'right', color: '#f6c445' }}>
-                                ${emp.keptTips.toFixed(2)}
-                              </td>
-                              <td style={{ textAlign: 'right', color: '#00e5a3', fontWeight: 600 }}>
-                                ${emp.poolShare.toFixed(2)}
-                              </td>
-                              <td style={{ textAlign: 'right', color: '#ffffff', fontWeight: 700 }}>
+                              <td style={{ textAlign: 'right', color: '#00e5a3', fontWeight: 700 }}>
                                 ${emp.totalPayout.toFixed(2)}
                               </td>
                             </tr>

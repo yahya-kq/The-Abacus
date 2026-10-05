@@ -6,7 +6,6 @@ import { Sidebar, NavScreen } from '../components/Sidebar';
 import { LandingHero } from '../components/LandingHero';
 import { SetupPage } from '../components/SetupPage';
 import { TimeCardsPage } from '../components/TimeCardsPage';
-import { TipPoolSummaryPage } from '../components/TipPoolSummaryPage';
 import { CalculationDashboard } from '../components/CalculationDashboard';
 import {
   TipPoolSettings,
@@ -295,15 +294,15 @@ export default function Home() {
     }
   };
 
-  // Called when password ("Go Berserk") is successfully entered
+  // Called when password ("Go Berserk" or "gobeserk") is successfully entered
   const handleAuthSuccess = () => {
     setIsBacktestAuthenticated(true);
     setIsAuthModalOpen(false);
     if (currentScreen === 'hero') {
       setCurrentScreen('setup');
       showToast('Authenticated: Backtest workspace loaded.');
-    } else if (currentScreen === 'setup') {
-      setCurrentScreen('summary');
+    } else {
+      setCurrentScreen('dashboard');
       showToast('Authenticated: Tip calculation complete.');
     }
   };
@@ -311,7 +310,7 @@ export default function Home() {
   // Gate calculation execution: Requires active session authentication or demo mode
   const handleExecuteCalculation = () => {
     if (isDemoMode || isBacktestAuthenticated) {
-      setCurrentScreen('summary');
+      setCurrentScreen('dashboard');
     } else {
       setIsAuthModalOpen(true);
     }
@@ -524,7 +523,6 @@ export default function Home() {
               <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
                 {currentScreen === 'setup' && 'Tip Configuration'}
                 {currentScreen === 'timecards' && 'Time Cards Ledger'}
-                {currentScreen === 'summary' && 'Tip Pool Summary'}
                 {currentScreen === 'dashboard' && 'Calculation Dashboard'}
               </span>
             </div>
@@ -639,14 +637,6 @@ export default function Home() {
               settings={settings}
               onUpdateSettings={setSettings}
               dailyTipInputs={dailyTipInputs}
-            />
-          )}
-
-          {currentScreen === 'summary' && (
-            <TipPoolSummaryPage
-              result={calculationResult}
-              settings={settings}
-              onHardRefresh={requestHardRefresh}
             />
           )}
 

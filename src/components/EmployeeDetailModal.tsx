@@ -97,7 +97,7 @@ export function EmployeeDetailModal({ employee, onClose }: EmployeeDetailModalPr
             <div style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-muted)' }}>
               TOTAL PAYOUT
             </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff', marginTop: '4px' }}>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#00e5a3', marginTop: '4px' }}>
               ${employee.totalPayout.toFixed(2)}
             </div>
           </div>
@@ -127,41 +127,9 @@ export function EmployeeDetailModal({ employee, onClose }: EmployeeDetailModalPr
             }}
           >
             <div style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-              KEPT TIPS
-            </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f6c445', marginTop: '4px' }}>
-              ${employee.totalKeptTips.toFixed(2)}
-            </div>
-          </div>
-
-          <div
-            style={{
-              background: 'rgba(21, 19, 54, 0.7)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-md)',
-              padding: '14px 16px',
-            }}
-          >
-            <div style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-              POOL SHARE
-            </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#00e5a3', marginTop: '4px' }}>
-              ${employee.totalPoolReceived.toFixed(2)}
-            </div>
-          </div>
-
-          <div
-            style={{
-              background: 'rgba(21, 19, 54, 0.7)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-md)',
-              padding: '14px 16px',
-            }}
-          >
-            <div style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-muted)' }}>
               AVG RATE / HR
             </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#c5c7e8', marginTop: '4px' }}>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff', marginTop: '4px' }}>
               ${employee.averagePerHourTip.toFixed(2)}/hr
             </div>
           </div>
@@ -177,8 +145,6 @@ export function EmployeeDetailModal({ employee, onClose }: EmployeeDetailModalPr
                   <th>Role</th>
                   <th style={{ textAlign: 'right' }}>Hours</th>
                   <th style={{ textAlign: 'right' }}>Net Sales</th>
-                  <th style={{ textAlign: 'right' }}>Kept Tips</th>
-                  <th style={{ textAlign: 'right' }}>Pool Share</th>
                   <th style={{ textAlign: 'right' }}>Total Payout</th>
                 </tr>
               </thead>
@@ -191,13 +157,7 @@ export function EmployeeDetailModal({ employee, onClose }: EmployeeDetailModalPr
                     <td style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>
                       ${(shift.netSale || 0).toFixed(2)}
                     </td>
-                    <td style={{ textAlign: 'right', color: '#f6c445' }}>
-                      ${shift.keptTips.toFixed(2)}
-                    </td>
-                    <td style={{ textAlign: 'right', color: '#00e5a3', fontWeight: 600 }}>
-                      ${shift.poolShare.toFixed(2)}
-                    </td>
-                    <td style={{ textAlign: 'right', color: '#ffffff', fontWeight: 700 }}>
+                    <td style={{ textAlign: 'right', color: '#00e5a3', fontWeight: 700 }}>
                       ${shift.totalPayout.toFixed(2)}
                     </td>
                   </tr>

@@ -234,9 +234,18 @@ export function calculateTipCycle(
         if (!firstShiftId) firstShiftId = s.id;
       });
       const diffCents = Math.round((totalDayPool - sumShiftShares) * 100) / 100;
-      if (Math.abs(diffCents) > 0 && Math.abs(diffCents) < 0.25 && firstShiftId) {
-        const cur = shiftPoolShare.get(firstShiftId) || 0;
-        shiftPoolShare.set(firstShiftId, Math.max(0, Math.round((cur + diffCents) * 100) / 100));
+      if (Math.abs(diffCents) > 0 && Math.abs(diffCents) <= 1.00 && recipientShifts.length > 0) {
+        let targetShiftId = recipientShifts[0].id;
+        let maxShare = -1;
+        recipientShifts.forEach((s) => {
+          const share = shiftPoolShare.get(s.id) || 0;
+          if (share > maxShare) {
+            maxShare = share;
+            targetShiftId = s.id;
+          }
+        });
+        const cur = shiftPoolShare.get(targetShiftId) || 0;
+        shiftPoolShare.set(targetShiftId, Math.max(0, Math.round((cur + diffCents) * 100) / 100));
       }
     }
 
@@ -244,9 +253,10 @@ export function calculateTipCycle(
     const dayEmpMap = new Map<string, EmployeeDailyDetail>();
 
     for (const s of dayShifts) {
-      const cDetail = shiftContribDetails.get(s.id) || { contrib: 0, kept: s.collectedTips };
+      const cDetail = shiftContribDetails.get(s.id) || { contrib: 0, kept: 0 };
       const poolShare = shiftPoolShare.get(s.id) || 0;
-      const totalPayout = cDetail.kept + poolShare;
+      // Employee payout is their exact share from the tip pool
+      const totalPayout = poolShare;
 
       const existing = dayEmpMap.get(s.employeeName);
       if (existing) {
@@ -256,7 +266,7 @@ export function calculateTipCycle(
         existing.directTips = (existing.directTips || 0) + (s.directTips || 0);
         existing.gratuity = (existing.gratuity || 0) + (s.gratuity || 0);
         existing.contributionAmount += cDetail.contrib;
-        existing.keptTips += cDetail.kept;
+        existing.keptTips = 0;
         existing.poolShare += poolShare;
         existing.totalPayout += totalPayout;
       } else {
@@ -271,7 +281,7 @@ export function calculateTipCycle(
           directTips: s.directTips || 0,
           gratuity: s.gratuity || 0,
           contributionAmount: cDetail.contrib,
-          keptTips: cDetail.kept,
+          keptTips: 0,
           poolShare,
           totalPayout,
           dailyRate: perHourRate,
@@ -307,7 +317,7 @@ export function calculateTipCycle(
       empSum.totalDirectTips = (empSum.totalDirectTips || 0) + (s.directTips || 0);
       empSum.totalGratuity = (empSum.totalGratuity || 0) + (s.gratuity || 0);
       empSum.totalContribution += cDetail.contrib;
-      empSum.totalKeptTips += cDetail.kept;
+      empSum.totalKeptTips = 0;
       empSum.totalPoolReceived += poolShare;
       empSum.totalPayout += totalPayout;
       empSum.shiftCount += 1;
@@ -322,7 +332,6 @@ export function calculateTipCycle(
     let dayDistributed = 0;
     dayEmployeesList.forEach((e) => {
       dayDistributed += e.poolShare;
-      cycleTotalKeptTips += e.keptTips;
       cycleTotalOverallPayout += e.totalPayout;
     });
 

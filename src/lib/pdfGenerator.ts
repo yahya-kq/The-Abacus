@@ -94,8 +94,6 @@ export function generateTipCyclePDF(result: CycleCalculationResult): void {
     emp.role,
     emp.totalHours.toFixed(2),
     `$${emp.totalNetSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-    `$${emp.totalKeptTips.toFixed(2)}`,
-    `$${emp.totalPoolReceived.toFixed(2)}`,
     `$${emp.totalPayout.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     `$${emp.averagePerHourTip.toFixed(2)}`,
   ]);
@@ -106,15 +104,13 @@ export function generateTipCyclePDF(result: CycleCalculationResult): void {
     `${result.totalEligibleEmployees} Staff`,
     result.totalRecipientHours.toFixed(2),
     `$${result.employeeSummaries.reduce((s, e) => s + e.totalNetSales, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-    `$${result.totalKeptTips.toFixed(2)}`,
-    `$${result.totalDistributed.toFixed(2)}`,
     `$${result.totalOverallPayout.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     `$${result.averagePerHourValue.toFixed(2)}`,
   ]);
 
   autoTable(doc, {
     startY: currentY,
-    head: [['Employee Name', 'Role', 'Hours', 'Net Sales', 'Kept Tips', 'Pool Share', 'Total Payout', 'Rate ($/hr)']],
+    head: [['Employee Name', 'Role', 'Hours', 'Net Sales', 'Total Payout', 'Rate ($/hr)']],
     body: employeeTableBody,
     theme: 'grid',
     pageBreak: 'auto',
@@ -133,20 +129,18 @@ export function generateTipCyclePDF(result: CycleCalculationResult): void {
       cellPadding: 5,
     },
     columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 120 },
-      1: { cellWidth: 70 },
-      2: { halign: 'right', cellWidth: 50 },
-      3: { halign: 'right', cellWidth: 65 },
-      4: { halign: 'right', cellWidth: 60 },
-      5: { halign: 'right', cellWidth: 60, fontStyle: 'bold' },
-      6: { halign: 'right', fontStyle: 'bold', textColor: [88, 81, 223], cellWidth: 65 },
-      7: { halign: 'right', cellWidth: 50 },
+      0: { fontStyle: 'bold', cellWidth: 150 },
+      1: { cellWidth: 95 },
+      2: { halign: 'right', cellWidth: 65 },
+      3: { halign: 'right', cellWidth: 75 },
+      4: { halign: 'right', fontStyle: 'bold', textColor: [88, 81, 223], cellWidth: 85 },
+      5: { halign: 'right', cellWidth: 70 },
     },
     didParseCell: (data) => {
       if (data.row.index === employeeTableBody.length - 1) {
         data.cell.styles.fontStyle = 'bold';
         data.cell.styles.fillColor = [241, 243, 250];
-        if (data.column.index === 6) {
+        if (data.column.index === 4) {
           data.cell.styles.textColor = [88, 81, 223];
         }
       }

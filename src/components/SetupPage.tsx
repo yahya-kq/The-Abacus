@@ -76,9 +76,8 @@ export function SetupPage({
 
   // Available roles detected dynamically ONLY from uploaded time cards
   const detectedRoles = useMemo(() => {
-    return Array.from(new Set(shifts.map((s) => s.role))).filter(Boolean);
+    return Array.from(new Set(shifts.map((s) => s.role))).filter(Boolean).sort((a, b) => a.localeCompare(b));
   }, [shifts]);
-  const allAvailableRoles = detectedRoles;
 
   const [isOcrLoading, setIsOcrLoading] = useState(false);
 
@@ -325,8 +324,6 @@ export function SetupPage({
             detectedRestaurant
           );
 
-          // Auto-fetch roles from time cards if contributors or recipients are currently empty
-          const newRoles = Array.from(new Set(parsed.shifts.map((s) => s.role))).filter(Boolean);
           const updatedSettings = { ...settings };
           let changed = false;
 
@@ -344,27 +341,6 @@ export function SetupPage({
             changed = true;
           }
 
-          if (newRoles.length > 0) {
-            if (updatedSettings.contributors.length === 0) {
-              updatedSettings.contributors = newRoles.map((r, i) => ({
-                id: `contrib-${Date.now()}-${i}`,
-                role: r,
-                contributionPercent: updatedSettings.splitSetup === 'percentage_of_sales' ? 5 : 100,
-                source: 'All',
-              }));
-              changed = true;
-            }
-            if (updatedSettings.recipients.length === 0) {
-              const eqPercent = Math.round((100 / newRoles.length) * 10) / 10;
-              updatedSettings.recipients = newRoles.map((r, i) => ({
-                id: `recip-${Date.now()}-${i}`,
-                role: r,
-                distributionPercent: eqPercent,
-                pointsPerHour: 1,
-              }));
-              changed = true;
-            }
-          }
           if (changed) {
             onUpdateSettings(updatedSettings);
           }
@@ -395,8 +371,6 @@ export function SetupPage({
             detectedRestaurant
           );
 
-          // Auto-fetch roles from time cards if contributors or recipients are currently empty
-          const newRoles = Array.from(new Set(parsed.shifts.map((s) => s.role))).filter(Boolean);
           const updatedSettings = { ...settings };
           let changed = false;
 
@@ -414,27 +388,6 @@ export function SetupPage({
             changed = true;
           }
 
-          if (newRoles.length > 0) {
-            if (updatedSettings.contributors.length === 0) {
-              updatedSettings.contributors = newRoles.map((r, i) => ({
-                id: `contrib-${Date.now()}-${i}`,
-                role: r,
-                contributionPercent: updatedSettings.splitSetup === 'percentage_of_sales' ? 5 : 100,
-                source: 'All',
-              }));
-              changed = true;
-            }
-            if (updatedSettings.recipients.length === 0) {
-              const eqPercent = Math.round((100 / newRoles.length) * 10) / 10;
-              updatedSettings.recipients = newRoles.map((r, i) => ({
-                id: `recip-${Date.now()}-${i}`,
-                role: r,
-                distributionPercent: eqPercent,
-                pointsPerHour: 1,
-              }));
-              changed = true;
-            }
-          }
           if (changed) {
             onUpdateSettings(updatedSettings);
           }
@@ -522,94 +475,8 @@ export function SetupPage({
     onUpdateSettings({ ...settings, recipients: updated });
   };
 
-  const addRoleAsContributor = (role: string) => {
-    if (settings.contributors.some((c) => c.role.toLowerCase() === role.toLowerCase())) return;
-    const updated = [
-      ...settings.contributors,
-      {
-        id: `contrib-${Date.now()}-${Math.random()}`,
-        role,
-        contributionPercent: 0,
-        source: 'All',
-      },
-    ];
-    onUpdateSettings({ ...settings, contributors: updated });
-  };
-
-  const addRoleAsRecipient = (role: string) => {
-    if (settings.recipients.some((r) => r.role.toLowerCase() === role.toLowerCase())) return;
-    const updated = [
-      ...settings.recipients,
-      {
-        id: `recip-${Date.now()}-${Math.random()}`,
-        role,
-        distributionPercent: 0,
-        pointsPerHour: 1,
-      },
-    ];
-    onUpdateSettings({ ...settings, recipients: updated });
-  };
-
-  // Auto-fetch all roles from time cards into contributors
-  const autoFetchAllRolesToContributors = () => {
-    if (detectedRoles.length === 0) return;
-    const existingRoles = new Set(settings.contributors.map((c) => c.role.toLowerCase()));
-    const missingRoles = detectedRoles.filter((r) => !existingRoles.has(r.toLowerCase()));
-    if (missingRoles.length === 0) return;
-
-    const newEntries = missingRoles.map((r, i) => ({
-      id: `contrib-${Date.now()}-${i}-${Math.random()}`,
-      role: r,
-      contributionPercent: settings.splitSetup === 'percentage_of_sales' ? 5 : 100,
-      source: 'All',
-    }));
-
-    onUpdateSettings({
-      ...settings,
-      contributors: [...settings.contributors, ...newEntries],
-    });
-  };
-
-  // Auto-fetch all roles from time cards into recipients
-  const autoFetchAllRolesToRecipients = () => {
-    if (detectedRoles.length === 0) return;
-    const existingRoles = new Set(settings.recipients.map((r) => r.role.toLowerCase()));
-    const missingRoles = detectedRoles.filter((r) => !existingRoles.has(r.toLowerCase()));
-    if (missingRoles.length === 0) return;
-
-    const totalCount = settings.recipients.length + missingRoles.length;
-    const eqPercent = totalCount > 0 ? Math.round((100 / totalCount) * 10) / 10 : 0;
-
-    const newEntries = missingRoles.map((r, i) => ({
-      id: `recip-${Date.now()}-${i}-${Math.random()}`,
-      role: r,
-      distributionPercent: eqPercent,
-      pointsPerHour: 1,
-    }));
-
-    onUpdateSettings({
-      ...settings,
-      recipients: [...settings.recipients, ...newEntries],
-    });
-  };
-
-  // Split setup selection: auto-fetches roles if contributors list is currently empty
   const handleSelectSplitSetup = (method: 'percentage_of_tips' | 'percentage_of_sales') => {
-    if (settings.contributors.length === 0 && detectedRoles.length > 0) {
-      const autoContributors = detectedRoles.map((r, i) => ({
-        id: `contrib-${Date.now()}-${i}`,
-        role: r,
-        contributionPercent: method === 'percentage_of_tips' ? 100 : 5,
-        source: 'All',
-      }));
-      onUpdateSettings({
-        ...settings,
-        splitSetup: method,
-        contributors: autoContributors,
-      });
-    } else {
-      onUpdateSettings({ ...settings, splitSetup: method });
-    }
+    onUpdateSettings({ ...settings, splitSetup: method });
   };
 
   // Calculate total percentage for recipients if method is Percentage
@@ -1238,41 +1105,15 @@ export function SetupPage({
               </p>
             </div>
 
-            {/* Detected roles helper banner */}
-            {detectedRoles.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', padding: '10px 14px', borderRadius: '8px', background: 'rgba(93, 84, 230, 0.1)', border: '1px solid rgba(108, 99, 255, 0.25)', marginBottom: '16px' }}>
-                <span style={{ fontSize: '0.8rem', color: '#9ca3ff', fontWeight: 600 }}>Detected Roles in Shift Data:</span>
-                {detectedRoles.map((role) => (
-                  <div key={role} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--bg-input)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--border-subtle)', fontSize: '0.78rem' }}>
-                    <span style={{ color: '#ffffff', fontWeight: 500 }}>{role}</span>
-                    <button
-                      type="button"
-                      onClick={() => addRoleAsContributor(role)}
-                      style={{ background: 'transparent', border: 'none', color: '#ff5f6d', cursor: 'pointer', padding: '0 2px', fontWeight: 700 }}
-                    >
-                      + Contrib
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => addRoleAsRecipient(role)}
-                      style={{ background: 'transparent', border: 'none', color: '#00e5a3', cursor: 'pointer', padding: '0 2px', fontWeight: 700 }}
-                    >
-                      + Recipient
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
             {/* Table of Role Contributors */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
               {shifts.length === 0 ? (
                 <div style={{ padding: '20px', borderRadius: '8px', background: 'rgba(139, 142, 222, 0.06)', border: '1px dashed var(--border-subtle)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
-                  <span>⚠️ No time cards uploaded. Upload a time card report above to dynamically populate available contributor roles.</span>
+                  <span>⚠️ No time cards uploaded. Upload a time card report above to select available contributor roles.</span>
                 </div>
               ) : settings.contributors.length === 0 ? (
                 <div style={{ padding: '20px', borderRadius: '8px', background: 'rgba(139, 142, 222, 0.06)', border: '1px dashed var(--border-subtle)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
-                  No contributor roles configured yet. Click &quot;+ Add role contributor&quot; or &quot;Auto-Fetch All Roles from Time Cards&quot; to configure role splits.
+                  No contributor roles added yet. Click &quot;+ Add role contributor&quot; to configure role splits.
                 </div>
               ) : null}
               {settings.contributors.map((contrib, idx) => (
@@ -1286,14 +1127,22 @@ export function SetupPage({
                   }}
                 >
                   <div style={{ position: 'relative' }}>
-                    <input
-                      type="text"
-                      list="all-available-roles"
+                    <select
                       className="input-clean"
                       value={contrib.role}
-                      placeholder="Role (e.g. Server, Cashier)..."
                       onChange={(e) => updateContributor(idx, 'role', e.target.value)}
-                    />
+                      style={{ cursor: 'pointer', appearance: 'auto' }}
+                    >
+                      <option value="">Select a role...</option>
+                      {contrib.role && !detectedRoles.includes(contrib.role) && (
+                        <option value={contrib.role}>{contrib.role}</option>
+                      )}
+                      {detectedRoles.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div style={{ position: 'relative' }}>
@@ -1588,38 +1437,6 @@ export function SetupPage({
                 <span>Add role contributor</span>
               </button>
 
-              {detectedRoles.length > 0 && (
-                <button
-                  onClick={autoFetchAllRolesToContributors}
-                  type="button"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: 'rgba(0, 229, 163, 0.1)',
-                    border: '1px solid rgba(0, 229, 163, 0.35)',
-                    color: '#00e5a3',
-                    fontSize: '0.84rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    padding: '6px 14px',
-                    borderRadius: 'var(--radius-sm)',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(0, 229, 163, 0.2)';
-                    e.currentTarget.style.borderColor = '#00e5a3';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(0, 229, 163, 0.1)';
-                    e.currentTarget.style.borderColor = 'rgba(0, 229, 163, 0.35)';
-                  }}
-                >
-                  <Sparkles size={14} />
-                  <span>Auto-Fetch All Roles from Time Cards ({detectedRoles.length})</span>
-                </button>
-              )}
-
               <button
                 onClick={addCustomSource}
                 type="button"
@@ -1729,11 +1546,11 @@ export function SetupPage({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px', marginBottom: '16px' }}>
             {shifts.length === 0 ? (
               <div style={{ padding: '20px', borderRadius: '8px', background: 'rgba(139, 142, 222, 0.06)', border: '1px dashed var(--border-subtle)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
-                <span>⚠️ No time cards uploaded. Upload a time card report above to dynamically populate available recipient roles.</span>
+                <span>⚠️ No time cards uploaded. Upload a time card report above to select available recipient roles.</span>
               </div>
             ) : settings.recipients.length === 0 ? (
               <div style={{ padding: '20px', borderRadius: '8px', background: 'rgba(139, 142, 222, 0.06)', border: '1px dashed var(--border-subtle)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
-                No recipient roles configured yet. Click &quot;+ Add recipient&quot; or &quot;Auto-Fetch All Roles from Time Cards&quot; to receive tip pool allocations.
+                No recipient roles added yet. Click &quot;+ Add recipient&quot; to configure distribution shares.
               </div>
             ) : null}
             {settings.recipients.map((recip, idx) => (
@@ -1747,14 +1564,22 @@ export function SetupPage({
                 }}
               >
                 <div style={{ position: 'relative' }}>
-                  <input
-                    type="text"
-                    list="all-available-roles"
+                  <select
                     className="input-clean"
                     value={recip.role}
-                    placeholder="Role (e.g. Server, Cashier)..."
                     onChange={(e) => updateRecipient(idx, 'role', e.target.value)}
-                  />
+                    style={{ cursor: 'pointer', appearance: 'auto' }}
+                  >
+                    <option value="">Select a role...</option>
+                    {recip.role && !detectedRoles.includes(recip.role) && (
+                      <option value={recip.role}>{recip.role}</option>
+                    )}
+                    {detectedRoles.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {settings.distributionMethod === 'Equally' && (
@@ -1848,38 +1673,6 @@ export function SetupPage({
               <Plus size={16} />
               <span>Add recipient</span>
             </button>
-
-            {detectedRoles.length > 0 && (
-              <button
-                onClick={autoFetchAllRolesToRecipients}
-                type="button"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: 'rgba(0, 229, 163, 0.1)',
-                  border: '1px solid rgba(0, 229, 163, 0.35)',
-                  color: '#00e5a3',
-                  fontSize: '0.84rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  padding: '6px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(0, 229, 163, 0.2)';
-                  e.currentTarget.style.borderColor = '#00e5a3';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(0, 229, 163, 0.1)';
-                  e.currentTarget.style.borderColor = 'rgba(0, 229, 163, 0.35)';
-                }}
-              >
-                <Sparkles size={14} />
-                <span>Auto-Fetch All Roles from Time Cards ({detectedRoles.length})</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -1973,13 +1766,6 @@ export function SetupPage({
           </div>
         </div>
       )}
-
-      {/* Datalist for fast role auto-complete while preserving free text typing */}
-      <datalist id="all-available-roles">
-        {allAvailableRoles.map((r) => (
-          <option key={r} value={r} />
-        ))}
-      </datalist>
     </div>
   </div>
   );

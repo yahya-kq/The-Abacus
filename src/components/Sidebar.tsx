@@ -11,7 +11,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
-export type NavScreen = 'hero' | 'setup' | 'timecards' | 'summary' | 'dashboard';
+export type NavScreen = 'hero' | 'setup' | 'timecards' | 'dashboard';
 
 interface SidebarProps {
   currentScreen: NavScreen;
@@ -39,12 +39,6 @@ export function Sidebar({
       id: 'timecards' as NavScreen,
       label: 'Time Cards',
       icon: Clock,
-      badge: null,
-    },
-    {
-      id: 'summary' as NavScreen,
-      label: 'Tip Pool Summary',
-      icon: Layers,
       badge: null,
     },
     {
