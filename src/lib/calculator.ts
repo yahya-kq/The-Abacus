@@ -142,10 +142,11 @@ export function calculateTipCycle(
     // If shift contributions exist, they already account for the shift tips.
     // We must NOT double-count webDashTips (which is the daily sum of those same shift tips).
     let totalDayPool = 0;
+    let webDashContrib = 0;
     if (dayShiftContributions > 0) {
       totalDayPool = dayShiftContributions + externalPool;
     } else {
-      const webDashContrib = (dayInput.webDashTips || 0) * (
+      webDashContrib = (dayInput.webDashTips || 0) * (
         settings.sources.webDash
           ? (settings.sources.webDash.enabled ? settings.sources.webDash.percent / 100 : 0)
           : 1
