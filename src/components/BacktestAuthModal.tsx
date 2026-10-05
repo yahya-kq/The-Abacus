@@ -45,8 +45,9 @@ export function BacktestAuthModal({
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    // Required password: "Go Berserk"
-    if (password === 'Go Berserk' || password.trim() === 'Go Berserk') {
+    // Required password: "gobeserk" (also supports "Go Berserk", case and whitespace insensitive)
+    const normalized = password.trim().toLowerCase().replace(/\s+/g, '');
+    if (normalized === 'gobeserk') {
       setError(null);
       setPassword('');
       onSuccess();
