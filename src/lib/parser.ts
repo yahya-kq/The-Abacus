@@ -378,6 +378,12 @@ export function parseTimecardRows(
     netSale: findCol(['net sale', 'sales', 'gross sale', 'total sale']),
     tips: findCol(['collected tips', 'credit card tips', 'cc tips', 'direct tips', 'tips']),
     gratuity: findCol(['gratuity', 'auto gratuity', 'service charge', 'grat']),
+    regularHours: findCol(['regular hours', 'reg hours', 'regular']),
+    overtime: findCol(['overtime', 'ot hours', 'ot']),
+    doubleOvertime: findCol(['double overtime', 'double ot']),
+    weeklyOvertime: findCol(['weekly overtime', 'weekly ot']),
+    paidBreaksHours: findCol(['paid breaks hours', 'paid breaks', 'paid break']),
+    unpaidBreaksHours: findCol(['unpaid breaks hours', 'unpaid breaks', 'unpaid break']),
   };
 
   // Dynamic Fallback: sample data rows if critical columns were not identified by header names
@@ -469,6 +475,13 @@ export function parseTimecardRows(
       extractedDailyTips[businessDate] = Math.round(((extractedDailyTips[businessDate] || 0) + collectedTips) * 100) / 100;
     }
 
+    const regularHours = colIndex.regularHours !== -1 ? parseCleanNumber(row[colIndex.regularHours]) : hours;
+    const overtimeHours = colIndex.overtime !== -1 ? parseCleanNumber(row[colIndex.overtime]) : 0;
+    const doubleOvertime = colIndex.doubleOvertime !== -1 ? parseCleanNumber(row[colIndex.doubleOvertime]) : 0;
+    const weeklyOvertime = colIndex.weeklyOvertime !== -1 ? parseCleanNumber(row[colIndex.weeklyOvertime]) : 0;
+    const paidBreaksHours = colIndex.paidBreaksHours !== -1 ? parseCleanNumber(row[colIndex.paidBreaksHours]) : 0;
+    const unpaidBreaksHours = colIndex.unpaidBreaksHours !== -1 ? parseCleanNumber(row[colIndex.unpaidBreaksHours]) : 0;
+
     shifts.push({
       id: `shift-${shifts.length + 1}`,
       employeeName: currentEmployeeName,
@@ -477,6 +490,12 @@ export function parseTimecardRows(
       rawDate: String(rawDate),
       timeIn,
       timeOut,
+      regularHours,
+      overtimeHours,
+      doubleOvertime,
+      weeklyOvertime,
+      paidBreaksHours,
+      unpaidBreaksHours,
       totalHours: hours,
       netSale,
       collectedTips,

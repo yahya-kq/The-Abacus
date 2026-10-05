@@ -6,6 +6,7 @@ import { Sidebar, NavScreen } from '../components/Sidebar';
 import { LandingHero } from '../components/LandingHero';
 import { SetupPage } from '../components/SetupPage';
 import { TimeCardsPage } from '../components/TimeCardsPage';
+import { TipPoolSummaryPage } from '../components/TipPoolSummaryPage';
 import { CalculationDashboard } from '../components/CalculationDashboard';
 import {
   TipPoolSettings,
@@ -484,8 +485,9 @@ export default function Home() {
               </button>
               <span style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>|</span>
               <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-                {currentScreen === 'setup' && 'Tip Pool Configuration'}
+                {currentScreen === 'setup' && 'Tip Configuration'}
                 {currentScreen === 'timecards' && 'Time Cards Ledger'}
+                {currentScreen === 'summary' && 'Tip Pool Summary'}
                 {currentScreen === 'dashboard' && 'Calculation Dashboard'}
               </span>
             </div>
@@ -584,7 +586,7 @@ export default function Home() {
               dailyTipInputs={dailyTipInputs}
               onDailyInputChange={handleDailyInputChange}
               onHardRefresh={requestHardRefresh}
-              onRunCalculation={() => setCurrentScreen('dashboard')}
+              onRunCalculation={() => setCurrentScreen('summary')}
               timeCardFileName={timeCardFileName}
               otherTipFileName={otherTipFileName}
               onOtherTipsLoaded={handleOtherTipsLoaded}
@@ -599,6 +601,15 @@ export default function Home() {
               onUpdateShifts={setShifts}
               settings={settings}
               onUpdateSettings={setSettings}
+              dailyTipInputs={dailyTipInputs}
+            />
+          )}
+
+          {currentScreen === 'summary' && (
+            <TipPoolSummaryPage
+              result={calculationResult}
+              settings={settings}
+              onHardRefresh={requestHardRefresh}
             />
           )}
 

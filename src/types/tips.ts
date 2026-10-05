@@ -67,6 +67,10 @@ export interface ProcessedShift {
   timeOut: string;
   regularHours?: number;
   overtimeHours?: number;
+  doubleOvertime?: number;
+  weeklyOvertime?: number;
+  paidBreaksHours?: number;
+  unpaidBreaksHours?: number;
   totalHours: number; // Decisive metric
   netSale: number;
   collectedTips: number; // Total tips (directTips + gratuity)

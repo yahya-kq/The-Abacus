@@ -145,14 +145,20 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
       >
         <div className="glass-panel stat-card-hover" style={{ padding: '20px 22px' }}>
           <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-            Total Pool Distributed
+            Total Tips
           </span>
           <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#9ca3ff', marginTop: '4px' }}>
+            ${(Math.round((result.totalDistributed + result.totalKeptTips) * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+        </div>
+
+        <div className="glass-panel stat-card-hover" style={{ padding: '20px 22px', border: '1.5px solid rgba(108, 99, 255, 0.45)' }}>
+          <span style={{ fontSize: '0.76rem', color: '#9ca3ff', fontWeight: 700, textTransform: 'uppercase' }}>
+            Total Payouts
+          </span>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#ffffff', marginTop: '4px' }}>
             ${result.totalDistributed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-            Pool Collected: ${result.totalPool.toFixed(2)}
-          </span>
         </div>
 
         <div className="glass-panel stat-card-hover" style={{ padding: '20px 22px' }}>
@@ -162,59 +168,24 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
           <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#00e5a3', marginTop: '4px' }}>
             {result.totalRecipientHours.toFixed(2)} hrs
           </div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-            Across {result.totalEligibleEmployees} active employees
-          </span>
         </div>
 
         <div className="glass-panel stat-card-hover" style={{ padding: '20px 22px' }}>
           <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-            Average Rate / Hr
+            Average Rate
           </span>
           <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#c5c7e8', marginTop: '4px' }}>
             ${result.averagePerHourValue.toFixed(2)}/hr
           </div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-            Uniform distribution rate
-          </span>
         </div>
 
         <div className="glass-panel stat-card-hover" style={{ padding: '20px 22px' }}>
           <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-            Total Kept Tips
+            Employees in Pool
           </span>
           <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#f6c445', marginTop: '4px' }}>
-            ${result.totalKeptTips.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {result.totalEligibleEmployees}
           </div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-            Retained direct shift tips
-          </span>
-        </div>
-
-        {(result.totalGratuity || 0) > 0 && (
-          <div className="glass-panel stat-card-hover" style={{ padding: '20px 22px' }}>
-            <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-              Auto Gratuity
-            </span>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#00e5a3', marginTop: '4px' }}>
-              ${result.totalGratuity?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-              Included in collected tips
-            </span>
-          </div>
-        )}
-
-        <div className="glass-panel stat-card-hover" style={{ padding: '20px 22px', border: '1.5px solid rgba(108, 99, 255, 0.45)' }}>
-          <span style={{ fontSize: '0.76rem', color: '#9ca3ff', fontWeight: 700, textTransform: 'uppercase' }}>
-            Total Overall Payout
-          </span>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#ffffff', marginTop: '4px' }}>
-            ${result.totalOverallPayout.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-            Kept Tips + Pool Share
-          </span>
         </div>
       </div>
 
@@ -317,7 +288,7 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
                         No Calculation Data Available
                       </div>
                       <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)' }}>
-                        Configure your Tip Pool Setup and upload timecards to generate client-ready allocation results.
+                        Configure your Tip Setup and upload timecards to generate client-ready allocation results.
                       </p>
                     </td>
                   </tr>

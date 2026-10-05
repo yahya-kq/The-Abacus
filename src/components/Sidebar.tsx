@@ -5,12 +5,13 @@ import {
   SlidersHorizontal,
   Clock,
   BarChart3,
+  Layers,
   RotateCcw,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
 
-export type NavScreen = 'hero' | 'setup' | 'timecards' | 'dashboard';
+export type NavScreen = 'hero' | 'setup' | 'timecards' | 'summary' | 'dashboard';
 
 interface SidebarProps {
   currentScreen: NavScreen;
@@ -30,7 +31,7 @@ export function Sidebar({
   const navItems = [
     {
       id: 'setup' as NavScreen,
-      label: 'Tip Pool Setup',
+      label: 'Tip Setup',
       icon: SlidersHorizontal,
       badge: null,
     },
@@ -38,6 +39,12 @@ export function Sidebar({
       id: 'timecards' as NavScreen,
       label: 'Time Cards',
       icon: Clock,
+      badge: null,
+    },
+    {
+      id: 'summary' as NavScreen,
+      label: 'Tip Pool Summary',
+      icon: Layers,
       badge: null,
     },
     {

@@ -16,6 +16,7 @@ import {
   Sparkles,
   ArrowRight,
   X,
+  AlertCircle,
 } from 'lucide-react';
 import {
   TipPoolSettings,
@@ -73,10 +74,11 @@ export function SetupPage({
   const [isManualLocked, setIsManualLocked] = useState(true);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // Available roles detected from shifts or defaults
-  const detectedRoles = Array.from(new Set(shifts.map((s) => s.role))).filter(Boolean);
-  const defaultRolesList = ['Server', 'Bartender', 'Barista', 'Cashier', 'Host', 'Busser', 'Cook', 'Dishwasher', 'Owner'];
-  const allAvailableRoles = Array.from(new Set([...detectedRoles, ...defaultRolesList]));
+  // Available roles detected dynamically ONLY from uploaded time cards
+  const detectedRoles = useMemo(() => {
+    return Array.from(new Set(shifts.map((s) => s.role))).filter(Boolean);
+  }, [shifts]);
+  const allAvailableRoles = detectedRoles;
 
   const [isOcrLoading, setIsOcrLoading] = useState(false);
 
@@ -109,6 +111,68 @@ export function SetupPage({
       };
     });
   }, [settings.startDate, settings.endDate, dailyTipInputs, shifts]);
+
+  // Aggregate totals for the external tip pool table columns and grand total
+  const dailyTipTotals = useMemo(() => {
+    let webDash = 0;
+    let online = 0;
+    let doorDash = 0;
+    let kiosk = 0;
+    let other = 0;
+    let grandTotal = 0;
+
+    for (const d of sortedDailyEntries) {
+      webDash += d.webDashTips || 0;
+      online += d.onlineTips || 0;
+      doorDash += d.doorDashTips || 0;
+      kiosk += d.kioskTips || 0;
+      other += d.otherTips || 0;
+      grandTotal += (d.webDashTips || 0) + (d.onlineTips || 0) + (d.doorDashTips || 0) + (d.kioskTips || 0) + (d.otherTips || 0);
+    }
+
+    return {
+      webDash: Math.round(webDash * 100) / 100,
+      online: Math.round(online * 100) / 100,
+      doorDash: Math.round(doorDash * 100) / 100,
+      kiosk: Math.round(kiosk * 100) / 100,
+      other: Math.round(other * 100) / 100,
+      grandTotal: Math.round(grandTotal * 100) / 100,
+    };
+  }, [sortedDailyEntries]);
+
+  // Strict Validation: Cannot run tip distribution until contributor, recipient, and distribution rules are configured
+  const validationErrors = useMemo(() => {
+    const errors: string[] = [];
+    if (shifts.length === 0) {
+      errors.push('Upload time cards above to import shift records and employee roles.');
+    }
+    if (settings.contributors.length === 0) {
+      errors.push('Contributor information is required. Add at least one contributor role.');
+    }
+    if (settings.recipients.length === 0) {
+      errors.push('Recipient information is required. Add at least one recipient role.');
+    }
+    if (!settings.distributionMethod) {
+      errors.push('Tip distribution method is required. Select Equally, Percentage, or Points.');
+    }
+    if (settings.distributionMethod === 'Percentage' && settings.recipients.length > 0) {
+      const sumPct = settings.recipients.reduce((acc, r) => acc + (r.distributionPercent || 0), 0);
+      if (Math.abs(sumPct - 100) > 0.1) {
+        errors.push(`Recipient percentages must equal 100% (currently ${sumPct.toFixed(1)}%).`);
+      }
+    }
+    return errors;
+  }, [shifts.length, settings.contributors, settings.recipients, settings.distributionMethod]);
+
+  const [showValidationModal, setShowValidationModal] = useState(false);
+
+  const handleRunTipDistribution = () => {
+    if (validationErrors.length > 0) {
+      setShowValidationModal(true);
+      return;
+    }
+    onRunCalculation();
+  };
 
   // Handle other tip source file upload (Excel, CSV, Text, or Screenshot Images)
   const handleOtherTipUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -577,7 +641,7 @@ export function SetupPage({
                 letterSpacing: '-0.02em',
               }}
             >
-              Tip Pool Setup
+              Tip Setup
             </h1>
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', marginTop: '4px' }}>
@@ -597,14 +661,18 @@ export function SetupPage({
             <span>Hard Refresh</span>
           </button>
 
-          {/* Run Calculation CTA */}
+          {/* Run Tip Distribution CTA */}
           <button
-            onClick={onRunCalculation}
+            onClick={handleRunTipDistribution}
             type="button"
             className="btn-primary"
-            style={{ padding: '10px 24px' }}
+            style={{
+              padding: '10px 24px',
+              opacity: validationErrors.length > 0 ? 0.75 : 1,
+            }}
+            title={validationErrors.length > 0 ? 'Click to view setup requirements before calculation' : 'Run Tip Distribution'}
           >
-            <span>Run Dashboard</span>
+            <span>Run Tip Distribution</span>
             <ArrowRight size={18} />
           </button>
         </div>
@@ -1001,18 +1069,18 @@ export function SetupPage({
             <h3 style={{ fontSize: '0.92rem', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
               External Daily Tip Pool Entries
             </h3>
-            <div className="data-table-container" style={{ maxHeight: '300px' }}>
-              <table className="data-table">
-                <thead>
+            <div className="data-table-container" style={{ maxHeight: '380px', overflowY: 'auto', position: 'relative' }}>
+              <table className="data-table" style={{ borderCollapse: 'separate', borderSpacing: 0, width: '100%' }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 12 }}>
                   <tr>
-                    <th>Date</th>
-                    <th>Day</th>
-                    <th>WebDash ($)</th>
-                    <th>Online ($)</th>
-                    <th>DoorDash ($)</th>
-                    <th>Kiosk ($)</th>
-                    <th>Other ($)</th>
-                    <th style={{ textAlign: 'right' }}>Total Input Tips</th>
+                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12 }}>Date</th>
+                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12 }}>Day</th>
+                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12 }}>WebDash ($)</th>
+                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12 }}>Online ($)</th>
+                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12 }}>DoorDash ($)</th>
+                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12 }}>Kiosk ($)</th>
+                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12 }}>Other ($)</th>
+                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12, textAlign: 'right' }}>Tips</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1081,6 +1149,20 @@ export function SetupPage({
                     </tr>
                   ))}
                 </tbody>
+                <tfoot style={{ position: 'sticky', bottom: 0, zIndex: 12 }}>
+                  <tr style={{ background: '#1c194a', borderTop: '2px solid rgba(108, 99, 255, 0.45)' }}>
+                    <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', fontWeight: 700, color: '#ffffff', zIndex: 12 }}>Total</td>
+                    <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', color: 'var(--text-muted)', zIndex: 12 }}>—</td>
+                    <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', fontWeight: 700, color: '#c5c7e8', zIndex: 12 }}>${dailyTipTotals.webDash.toFixed(2)}</td>
+                    <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', fontWeight: 700, color: '#c5c7e8', zIndex: 12 }}>${dailyTipTotals.online.toFixed(2)}</td>
+                    <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', fontWeight: 700, color: '#c5c7e8', zIndex: 12 }}>${dailyTipTotals.doorDash.toFixed(2)}</td>
+                    <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', fontWeight: 700, color: '#c5c7e8', zIndex: 12 }}>${dailyTipTotals.kiosk.toFixed(2)}</td>
+                    <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', fontWeight: 700, color: '#c5c7e8', zIndex: 12 }}>${dailyTipTotals.other.toFixed(2)}</td>
+                    <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', textAlign: 'right', fontWeight: 800, color: '#00e5a3', fontSize: '0.98rem', zIndex: 12 }}>
+                      ${dailyTipTotals.grandTotal.toFixed(2)}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>
@@ -1184,11 +1266,15 @@ export function SetupPage({
 
             {/* Table of Role Contributors */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-              {settings.contributors.length === 0 && (
-                <div style={{ padding: '16px', borderRadius: '8px', background: 'rgba(139, 142, 222, 0.06)', border: '1px dashed var(--border-subtle)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  No role contributors added yet. Click &quot;+ Add contributor&quot; below to configure role splits, or use the automated channel toggles (KIOSK, Online, QR, 3PO).
+              {shifts.length === 0 ? (
+                <div style={{ padding: '20px', borderRadius: '8px', background: 'rgba(139, 142, 222, 0.06)', border: '1px dashed var(--border-subtle)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
+                  <span>⚠️ No time cards uploaded. Upload a time card report above to dynamically populate available contributor roles.</span>
                 </div>
-              )}
+              ) : settings.contributors.length === 0 ? (
+                <div style={{ padding: '20px', borderRadius: '8px', background: 'rgba(139, 142, 222, 0.06)', border: '1px dashed var(--border-subtle)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
+                  No contributor roles configured yet. Click &quot;+ Add role contributor&quot; or &quot;Auto-Fetch All Roles from Time Cards&quot; to configure role splits.
+                </div>
+              ) : null}
               {settings.contributors.map((contrib, idx) => (
                 <div
                   key={contrib.id}
@@ -1641,11 +1727,15 @@ export function SetupPage({
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px', marginBottom: '16px' }}>
-            {settings.recipients.length === 0 && (
-              <div style={{ padding: '16px', borderRadius: '8px', background: 'rgba(139, 142, 222, 0.06)', border: '1px dashed var(--border-subtle)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                No recipient roles configured yet. Click &quot;+ Add recipient&quot; below or click a detected role above to receive tip pool allocations.
+            {shifts.length === 0 ? (
+              <div style={{ padding: '20px', borderRadius: '8px', background: 'rgba(139, 142, 222, 0.06)', border: '1px dashed var(--border-subtle)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
+                <span>⚠️ No time cards uploaded. Upload a time card report above to dynamically populate available recipient roles.</span>
               </div>
-            )}
+            ) : settings.recipients.length === 0 ? (
+              <div style={{ padding: '20px', borderRadius: '8px', background: 'rgba(139, 142, 222, 0.06)', border: '1px dashed var(--border-subtle)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
+                No recipient roles configured yet. Click &quot;+ Add recipient&quot; or &quot;Auto-Fetch All Roles from Time Cards&quot; to receive tip pool allocations.
+              </div>
+            ) : null}
             {settings.recipients.map((recip, idx) => (
               <div
                 key={recip.id}
@@ -1792,6 +1882,97 @@ export function SetupPage({
             )}
           </div>
         </div>
+
+      {/* Setup Validation Error Modal */}
+      {showValidationModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(5, 4, 18, 0.85)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px',
+          }}
+        >
+          <div
+            className="glass-panel modal-scale-in"
+            style={{
+              maxWidth: '520px',
+              width: '100%',
+              padding: '28px',
+              borderRadius: '16px',
+              border: '1.5px solid rgba(255, 95, 109, 0.45)',
+              background: '#151233',
+              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(255, 95, 109, 0.25)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '18px' }}>
+              <div
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '12px',
+                  background: 'rgba(255, 95, 109, 0.16)',
+                  border: '1px solid rgba(255, 95, 109, 0.35)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ff5f6d',
+                  flexShrink: 0,
+                }}
+              >
+                <AlertCircle size={24} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ffffff', margin: 0 }}>
+                  Tip Distribution Incomplete
+                </h3>
+                <p style={{ fontSize: '0.88rem', color: '#c5c7e8', marginTop: '6px', lineHeight: 1.5 }}>
+                  The tip distribution calculation cannot run until the required setup is completed:
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '22px' }}>
+              {validationErrors.map((err, i) => (
+                <div
+                  key={i}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 95, 109, 0.1)',
+                    border: '1px solid rgba(255, 95, 109, 0.25)',
+                    color: '#ff9da7',
+                    fontSize: '0.85rem',
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                  }}
+                >
+                  <span style={{ color: '#ff5f6d', fontWeight: 700 }}>•</span>
+                  <span>{err}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => setShowValidationModal(false)}
+                style={{ padding: '9px 24px' }}
+              >
+                Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Datalist for fast role auto-complete while preserving free text typing */}
       <datalist id="all-available-roles">
