@@ -133,18 +133,27 @@ export function calculateTipCycle(
     // 2. Add external sources from daily inputs
     const kioskContrib = (dayInput.kioskTips || 0) * (settings.sources.kiosk?.enabled ? settings.sources.kiosk.percent / 100 : 0);
     const onlineContrib = (dayInput.onlineTips || 0) * (settings.sources.online?.enabled ? settings.sources.online.percent / 100 : 0);
-    const webDashContrib = (dayInput.webDashTips || 0) * (
-      settings.sources.webDash
-        ? (settings.sources.webDash.enabled ? settings.sources.webDash.percent / 100 : 0)
-        : (settings.sources.online?.enabled ? settings.sources.online.percent / 100 : 1)
-    );
     const thirdPartyContrib = (dayInput.doorDashTips || 0) * (settings.sources.thirdParty?.enabled ? settings.sources.thirdParty.percent / 100 : 0);
     const otherContrib = (dayInput.otherTips || 0);
 
-    const externalPool = kioskContrib + onlineContrib + webDashContrib + thirdPartyContrib + otherContrib;
-    const computedPool = dayShiftContributions + externalPool;
-    const effectivePool = computedPool > 0 ? computedPool : (dayInput.totalTips || 0);
-    const totalDayPool = Math.round(effectivePool * 100) / 100;
+    const externalPool = kioskContrib + onlineContrib + thirdPartyContrib + otherContrib;
+
+    // Shift contributions come from time card employee shifts.
+    // If shift contributions exist, they already account for the shift tips.
+    // We must NOT double-count webDashTips (which is the daily sum of those same shift tips).
+    let totalDayPool = 0;
+    if (dayShiftContributions > 0) {
+      totalDayPool = dayShiftContributions + externalPool;
+    } else {
+      const webDashContrib = (dayInput.webDashTips || 0) * (
+        settings.sources.webDash
+          ? (settings.sources.webDash.enabled ? settings.sources.webDash.percent / 100 : 0)
+          : 1
+      );
+      const computed = webDashContrib + externalPool;
+      totalDayPool = computed > 0 ? computed : (dayInput.totalTips || 0);
+    }
+    totalDayPool = Math.round(totalDayPool * 100) / 100;
 
     cycleTotalPool += totalDayPool;
 
