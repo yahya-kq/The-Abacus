@@ -16,13 +16,12 @@ export function generateTipCyclePDF(result: CycleCalculationResult): void {
   const margin = 36;
   const contentWidth = pageWidth - margin * 2;
 
-  // Header Background Banner (Deep Indigo Theme matching COLORCODE)
+  // Header Background Banner (Deep Indigo Theme)
   doc.setFillColor(27, 25, 71); // #1b1947
   doc.rect(0, 0, pageWidth, 84, 'F');
 
-  // Embed Aio Logo in header (top-left or top-right)
+  // Embed Aio Logo in header
   try {
-    // Add Aio logo image
     doc.addImage(AIO_LOGO_BASE64, 'JPEG', margin, 18, 48, 48);
   } catch (e) {
     console.error('Failed to embed logo into PDF:', e);
@@ -35,17 +34,17 @@ export function generateTipCyclePDF(result: CycleCalculationResult): void {
   doc.setTextColor(255, 255, 255);
   doc.text((result.restaurantName || result.poolName || 'RESTAURANT').toUpperCase(), titleX, 38);
 
-  // Period Cycle Subheader
-  const cycleText = `Period: ${formatDisplayDate(result.startDate)} — ${formatDisplayDate(result.endDate)}  |  Distribution: ${result.distributionMethod}`;
+  // Period Cycle (Clean, no subtitles or descriptions)
+  const cycleText = `Period: ${formatDisplayDate(result.startDate)} — ${formatDisplayDate(result.endDate)}`;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
-  doc.setTextColor(184, 185, 219); // Periwinkle slate
+  doc.setTextColor(184, 185, 219);
   doc.text(cycleText, titleX, 56);
 
   // Generation timestamp on right side
   doc.setFontSize(8.5);
   doc.setTextColor(157, 159, 196);
-  const genDate = `Report Generated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}`;
+  const genDate = `Generated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}`;
   doc.text(genDate, pageWidth - margin, 46, { align: 'right' });
 
   let currentY = 104;
@@ -58,7 +57,7 @@ export function generateTipCyclePDF(result: CycleCalculationResult): void {
     { label: 'TOTAL POOL DISTRIBUTED', value: `$${result.totalDistributed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: [108, 99, 255] },
     { label: 'RECIPIENT HOURS', value: `${result.totalRecipientHours.toFixed(2)} hrs`, color: [0, 180, 160] },
     { label: 'AVERAGE RATE / HR', value: `$${result.averagePerHourValue.toFixed(2)}/hr`, color: [124, 102, 220] },
-    { label: 'TOTAL PAYOUT', value: `$${result.totalOverallPayout.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: [246, 196, 69] },
+    { label: 'TOTAL PAYOUT', value: `$${result.totalOverallPayout.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: [0, 229, 163] },
   ];
 
   kpis.forEach((kpi, idx) => {
@@ -80,7 +79,7 @@ export function generateTipCyclePDF(result: CycleCalculationResult): void {
 
   currentY += cardHeight + 22;
 
-  // Section Header: Employee Summary
+  // Section Header: Full Cycle Employee Summary
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(27, 25, 71);
@@ -150,79 +149,92 @@ export function generateTipCyclePDF(result: CycleCalculationResult): void {
 
   currentY = (doc as any).lastAutoTable.finalY + 24;
 
-  // Check if enough space for Daily Breakdown, else add page
-  if (currentY > pageHeight - 180) {
+  // Section 2: Employee Date-by-Date Breakdown
+  // Check if enough space for Section Header, else add page
+  if (currentY > pageHeight - 140) {
     doc.addPage();
     currentY = 40;
   }
 
-  // Section Header: Daily Breakdown
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(27, 25, 71);
-  doc.text('Daily Tip Summary & Pool Reconciliation', margin, currentY);
+  doc.text('Employee Breakdown by Date', margin, currentY);
 
-  currentY += 12;
+  currentY += 14;
 
-  const dailyTableBody = result.dailyCalculations.map((d) => [
-    d.displayDate,
-    d.dayOfWeek,
-    `$${d.totalPool.toFixed(2)}`,
-    `${d.totalRecipientHours.toFixed(2)} hrs`,
-    `$${d.perHourValue.toFixed(2)}/hr`,
-    `${d.employees.length} Staff`,
-    `$${d.employees.reduce((s, e) => s + e.poolShare, 0).toFixed(2)}`,
-  ]);
+  // Render each employee's daily breakdown table sequentially
+  for (const emp of result.employeeSummaries) {
+    if (!emp.dailyBreakdown || emp.dailyBreakdown.length === 0) continue;
 
-  dailyTableBody.push([
-    'TOTALS',
-    `${result.dailyCalculations.length} Days`,
-    `$${result.totalPool.toFixed(2)}`,
-    `${result.totalRecipientHours.toFixed(2)} hrs`,
-    `$${result.averagePerHourValue.toFixed(2)}/hr`,
-    `${result.totalEligibleEmployees} Staff`,
-    `$${result.totalDistributed.toFixed(2)}`,
-  ]);
+    if (currentY > pageHeight - 120) {
+      doc.addPage();
+      currentY = 40;
+    }
 
-  autoTable(doc, {
-    startY: currentY,
-    head: [['Business Date', 'Day', 'Pool Collected', 'Recipient Hours', 'Pool Rate', 'Active Staff', 'Pool Distributed']],
-    body: dailyTableBody,
-    theme: 'grid',
-    pageBreak: 'auto',
-    rowPageBreak: 'avoid',
-    headStyles: {
-      fillColor: [51, 48, 107],
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-      fontSize: 8.5,
-      halign: 'left',
-      cellPadding: 5,
-    },
-    styles: {
-      fontSize: 8,
-      textColor: [51, 65, 85],
-      cellPadding: 4.5,
-    },
-    columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 90 },
-      1: { cellWidth: 70 },
-      2: { halign: 'right', cellWidth: 75 },
-      3: { halign: 'right', cellWidth: 80 },
-      4: { halign: 'right', fontStyle: 'bold', cellWidth: 75 },
-      5: { halign: 'right', cellWidth: 70 },
-      6: { halign: 'right', fontStyle: 'bold', textColor: [88, 81, 223], cellWidth: 80 },
-    },
-    didParseCell: (data) => {
-      if (data.row.index === dailyTableBody.length - 1) {
-        data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.fillColor = [241, 243, 250];
-      }
-    },
-    margin: { left: margin, right: margin },
-  });
+    // Employee sub-header bar
+    doc.setFillColor(241, 243, 250);
+    doc.roundedRect(margin, currentY, contentWidth, 22, 4, 4, 'F');
+    doc.setDrawColor(226, 228, 240);
+    doc.roundedRect(margin, currentY, contentWidth, 22, 4, 4, 'S');
 
-  // Footer on each page
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(27, 25, 71);
+    doc.text(emp.employeeName, margin + 10, currentY + 15);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(80, 85, 120);
+    const empMeta = `Role: ${emp.role}  |  Total Hours: ${emp.totalHours.toFixed(2)} hrs  |  Total Payout: $${emp.totalPayout.toFixed(2)}  |  Avg Rate: $${emp.averagePerHourTip.toFixed(2)}/hr`;
+    doc.text(empMeta, pageWidth - margin - 10, currentY + 15, { align: 'right' });
+
+    currentY += 26;
+
+    const empRows = emp.dailyBreakdown.map((d) => [
+      d.displayDate || formatDisplayDate(d.date),
+      d.role || emp.role,
+      d.hours.toFixed(2),
+      `$${(d.netSale || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      `$${d.totalPayout.toFixed(2)}`,
+      `$${(d.hours > 0 ? d.totalPayout / d.hours : d.dailyRate).toFixed(2)}/hr`,
+    ]);
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Date', 'Role', 'Hours', 'Net Sales', 'Payout', 'Rate ($/hr)']],
+      body: empRows,
+      theme: 'grid',
+      pageBreak: 'auto',
+      rowPageBreak: 'avoid',
+      headStyles: {
+        fillColor: [51, 48, 107],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 8,
+        halign: 'left',
+        cellPadding: 4,
+      },
+      styles: {
+        fontSize: 7.5,
+        textColor: [51, 65, 85],
+        cellPadding: 4,
+      },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 100 },
+        1: { cellWidth: 85 },
+        2: { halign: 'right', cellWidth: 65 },
+        3: { halign: 'right', cellWidth: 80 },
+        4: { halign: 'right', fontStyle: 'bold', textColor: [88, 81, 223], cellWidth: 90 },
+        5: { halign: 'right', cellWidth: 80 },
+      },
+      margin: { left: margin, right: margin },
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 16;
+  }
+
+  // Footer on each page (clean, without any subtitles or extra captions)
   const totalPages = doc.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);
@@ -231,15 +243,13 @@ export function generateTipCyclePDF(result: CycleCalculationResult): void {
     doc.setTextColor(140, 142, 173);
 
     doc.setDrawColor(226, 228, 240);
-    doc.line(margin, pageHeight - 30, pageWidth - margin, pageHeight - 30);
+    doc.line(margin, pageHeight - 24, pageWidth - margin, pageHeight - 24);
 
     // Left
-    doc.text(`${result.restaurantName || 'Restaurant'} | Tip Pool Report`, margin, pageHeight - 16);
+    doc.text(`${result.restaurantName || 'Restaurant'} | Tip Pool Report`, margin, pageHeight - 12);
 
-    // Center Caption: STRICTLY as demanded by user:
-    // "These tips are calculated using the Tip Calculator."
-    doc.setFont('helvetica', 'italic');
-    doc.text('These tips are calculated using the Tip Calculator.', pageWidth / 2, pageHeight - 16, { align: 'center' });
+    // Right
+    doc.text(`Page ${p} of ${totalPages}`, pageWidth - margin, pageHeight - 12, { align: 'right' });
   }
 
   // File naming: strictly [Restaurant_Name]_[StartDate]_to_[EndDate].pdf
