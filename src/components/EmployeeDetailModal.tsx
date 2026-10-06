@@ -95,7 +95,7 @@ export function EmployeeDetailModal({ employee, onClose }: EmployeeDetailModalPr
             }}
           >
             <div style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-              TOTAL PAYOUT
+              TOTAL TIPS TO BE PAID
             </div>
             <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#00e5a3', marginTop: '4px' }}>
               ${employee.totalPayout.toFixed(2)}
@@ -145,7 +145,7 @@ export function EmployeeDetailModal({ employee, onClose }: EmployeeDetailModalPr
                   <th>Role</th>
                   <th style={{ textAlign: 'right' }}>Hours</th>
                   <th style={{ textAlign: 'right' }}>Net Sales</th>
-                  <th style={{ textAlign: 'right' }}>Total Payout</th>
+                  <th style={{ textAlign: 'right' }}>Total Tips to be Paid</th>
                 </tr>
               </thead>
               <tbody>

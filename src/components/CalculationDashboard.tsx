@@ -154,7 +154,7 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
 
         <div className="glass-panel stat-card-hover" style={{ padding: '20px 22px', border: '1.5px solid rgba(108, 99, 255, 0.45)' }}>
           <span style={{ fontSize: '0.76rem', color: '#9ca3ff', fontWeight: 700, textTransform: 'uppercase' }}>
-            Total Payouts
+            Total Tips to be Paid
           </span>
           <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#ffffff', marginTop: '4px' }}>
             ${result.totalDistributed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -274,7 +274,7 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
                   <th>Role</th>
                   <th style={{ textAlign: 'right' }}>Total Hours</th>
                   <th style={{ textAlign: 'right' }}>Total Net Sales</th>
-                  <th style={{ textAlign: 'right' }}>Total Payout</th>
+                  <th style={{ textAlign: 'right' }}>Total Tips to be Paid</th>
                   <th style={{ textAlign: 'right' }}>Rate ($/hr)</th>
                 </tr>
               </thead>
@@ -471,23 +471,16 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                     <div>
-                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block' }}>Pool Collected</span>
-                      <span style={{ fontSize: '1rem', fontWeight: 700, color: '#00e5a3' }}>
-                        ${day.totalPool.toFixed(2)}
-                      </span>
-                    </div>
-
-                    <div>
-                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block' }}>Recipient Hours</span>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block' }}>Total Hours</span>
                       <span style={{ fontSize: '1rem', fontWeight: 700, color: '#9ca3ff' }}>
                         {day.totalRecipientHours.toFixed(2)} hrs
                       </span>
                     </div>
 
                     <div>
-                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block' }}>Hourly Rate</span>
-                      <span style={{ fontSize: '1rem', fontWeight: 700, color: '#ffffff' }}>
-                        ${day.perHourValue.toFixed(2)}/hr
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block' }}>Total Tips to be Paid</span>
+                      <span style={{ fontSize: '1rem', fontWeight: 700, color: '#00e5a3' }}>
+                        ${day.totalPool.toFixed(2)}
                       </span>
                     </div>
 
@@ -520,9 +513,9 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
                           <tr>
                             <th>Employee Name</th>
                             <th>Role</th>
-                            <th style={{ textAlign: 'right' }}>Hours</th>
-                            <th style={{ textAlign: 'right' }}>Net Sales</th>
-                            <th style={{ textAlign: 'right' }}>Total Payout</th>
+                            <th style={{ textAlign: 'right' }}>Total Hours</th>
+                            <th style={{ textAlign: 'right' }}>Total Net Sales</th>
+                            <th style={{ textAlign: 'right' }}>Total Tips to be Paid</th>
                           </tr>
                         </thead>
                         <tbody>

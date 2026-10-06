@@ -33,6 +33,36 @@ export function generateDateRange(startDateStr: string, endDateStr: string): str
   return dates;
 }
 
+/** Normalize role names for matching (case/whitespace insensitive) */
+function normRole(role: string): string {
+  return (role || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/**
+ * Split `total` dollars across weights so every share is whole cents and
+ * the shares sum EXACTLY to `total` (largest-remainder method, $0.00 variance).
+ */
+function allocateCents(total: number, weights: { id: string; w: number }[]): Map<string, number> {
+  const result = new Map<string, number>();
+  const totalCents = Math.round(total * 100);
+  const sumW = weights.reduce((a, x) => a + (x.w > 0 ? x.w : 0), 0);
+  if (totalCents <= 0 || sumW <= 0) return result;
+
+  const parts = weights.map((x) => {
+    const raw = (totalCents * (x.w > 0 ? x.w : 0)) / sumW;
+    const floor = Math.floor(raw);
+    return { id: x.id, cents: floor, rem: raw - floor };
+  });
+  let leftover = totalCents - parts.reduce((a, p) => a + p.cents, 0);
+  const order = [...parts].sort((a, b) => b.rem - a.rem);
+  for (let i = 0; leftover > 0 && order.length > 0; i = (i + 1) % order.length) {
+    order[i].cents += 1;
+    leftover--;
+  }
+  parts.forEach((p) => result.set(p.id, p.cents / 100));
+  return result;
+}
+
 /**
  * The core Abacus Tip Calculation Engine
  * Supports:
@@ -53,7 +83,8 @@ export function calculateTipCycle(
   // Map settings for O(1) lookup
   const contributorMap = new Map<string, { percent: number; source: string }>();
   settings.contributors.forEach((c) => {
-    contributorMap.set(c.role.toLowerCase(), {
+    if (!normRole(c.role)) return;
+    contributorMap.set(normRole(c.role), {
       percent: c.contributionPercent || 0,
       source: c.source || 'All',
     });
@@ -61,7 +92,8 @@ export function calculateTipCycle(
 
   const recipientMap = new Map<string, { distributionPercent: number; pointsPerHour: number }>();
   settings.recipients.forEach((r) => {
-    recipientMap.set(r.role.toLowerCase(), {
+    if (!normRole(r.role)) return;
+    recipientMap.set(normRole(r.role), {
       distributionPercent: r.distributionPercent || 0,
       pointsPerHour: r.pointsPerHour || 1,
     });
@@ -84,6 +116,7 @@ export function calculateTipCycle(
   let cycleTotalDirectTips = 0;
   const excludedRolesSet = new Set<string>();
   let excludedShiftsCount = 0;
+  const undistributedDays: { date: string; amount: number }[] = [];
 
   for (const date of cycleDates) {
     const dayInput = dailyTipInputs[date] || {
@@ -104,7 +137,7 @@ export function calculateTipCycle(
     const shiftContribDetails = new Map<string, { contrib: number; kept: number }>();
 
     for (const s of dayShifts) {
-      const roleLower = s.role.toLowerCase();
+      const roleLower = normRole(s.role);
       const isSummaryRole = roleLower === 'summary' || roleLower === 'kiosk';
       const contribRule = contributorMap.get(roleLower);
 
@@ -124,6 +157,13 @@ export function calculateTipCycle(
           contrib = s.netSale * (contribRule.percent / 100);
           kept = Math.max(0, s.collectedTips - contrib);
         }
+      } else if (contribRule && contribRule.percent === 0) {
+        contrib = 0;
+        kept = s.collectedTips;
+      } else {
+        // In Equal pooling (or when no explicit rule exists), 100% of shift tips are contributed to the pool
+        contrib = s.collectedTips;
+        kept = 0;
       }
 
       dayShiftContributions += contrib;
@@ -138,29 +178,20 @@ export function calculateTipCycle(
 
     const externalPool = kioskContrib + onlineContrib + thirdPartyContrib + otherContrib;
 
-    // Shift contributions come from time card employee shifts.
-    // If shift contributions exist, they already account for the shift tips.
-    // We must NOT double-count webDashTips (which is the daily sum of those same shift tips).
-    let totalDayPool = 0;
-    let webDashContrib = 0;
-    if (dayShiftContributions > 0) {
-      totalDayPool = dayShiftContributions + externalPool;
-    } else {
-      webDashContrib = (dayInput.webDashTips || 0) * (
-        settings.sources.webDash
-          ? (settings.sources.webDash.enabled ? settings.sources.webDash.percent / 100 : 0)
-          : 1
-      );
-      const computed = webDashContrib + externalPool;
-      totalDayPool = computed > 0 ? computed : (dayInput.totalTips || 0);
-    }
-    totalDayPool = Math.round(totalDayPool * 100) / 100;
+    // Tips from time cards:
+    // If shift records exist for today, use their exact shift contributions.
+    // If no shifts were recorded for today, fall back to dayInput.webDashTips.
+    // NEVER add both (avoids doubling tips).
+    const dayTimecardTips = dayShifts.length > 0 ? dayShiftContributions : (dayInput.webDashTips || 0);
+    const webDashContrib = Math.round(dayTimecardTips * 100) / 100;
+
+    const totalDayPool = Math.round((dayTimecardTips + externalPool) * 100) / 100;
 
     cycleTotalPool += totalDayPool;
 
     // 3. Identify Recipient Shifts
     const recipientShifts = dayShifts.filter((s) => {
-      const isRecip = recipientMap.has(s.role.toLowerCase());
+      const isRecip = recipientMap.size === 0 || recipientMap.has(normRole(s.role));
       if (!isRecip) {
         excludedRolesSet.add(s.role);
         excludedShiftsCount++;
@@ -171,98 +202,73 @@ export function calculateTipCycle(
     // 4. Distribute pool according to selected method
     let dayTotalRecipientHours = 0;
     let dayTotalPointHours = 0;
-    const shiftPoolShare = new Map<string, number>();
+    let shiftPoolShare = new Map<string, number>();
 
     recipientShifts.forEach((s) => {
       dayTotalRecipientHours += s.totalHours;
-      const rRule = recipientMap.get(s.role.toLowerCase());
+      const rRule = recipientMap.get(normRole(s.role));
       const pts = rRule?.pointsPerHour || 1;
       dayTotalPointHours += s.totalHours * pts;
     });
 
     cycleTotalRecipientHours += dayTotalRecipientHours;
 
-    let perHourRate = 0;
-    let perPointRate = 0;
+    const perHourRate = dayTotalRecipientHours > 0 ? totalDayPool / dayTotalRecipientHours : 0;
+    const perPointRate = dayTotalPointHours > 0 ? totalDayPool / dayTotalPointHours : 0;
 
     if (totalDayPool > 0) {
-      if (settings.distributionMethod === 'Equally') {
-        perHourRate = dayTotalRecipientHours > 0 ? totalDayPool / dayTotalRecipientHours : 0;
+      // Build a weight per recipient shift; payout = DayPool × weight / Σweights
+      const weights: { id: string; w: number }[] = [];
+
+      if (settings.distributionMethod === 'Points') {
+        // Method 3: Shift Hours × Role Points × Point Rate
         recipientShifts.forEach((s) => {
-          const share = Math.round(s.totalHours * perHourRate * 100) / 100;
-          shiftPoolShare.set(s.id, share);
-        });
-      } else if (settings.distributionMethod === 'Points') {
-        perPointRate = dayTotalPointHours > 0 ? totalDayPool / dayTotalPointHours : 0;
-        recipientShifts.forEach((s) => {
-          const rRule = recipientMap.get(s.role.toLowerCase());
-          const pts = rRule?.pointsPerHour || 1;
-          const share = Math.round(s.totalHours * pts * perPointRate * 100) / 100;
-          shiftPoolShare.set(s.id, share);
+          const pts = recipientMap.get(normRole(s.role))?.pointsPerHour || 1;
+          weights.push({ id: s.id, w: s.totalHours * pts });
         });
       } else if (settings.distributionMethod === 'Percentage') {
-        // Group by role
+        // Method 2: Role bucket (re-normalized to active roles) split by hours within the role
         const roleHoursMap = new Map<string, number>();
         recipientShifts.forEach((s) => {
-          const rLower = s.role.toLowerCase();
-          roleHoursMap.set(rLower, (roleHoursMap.get(rLower) || 0) + s.totalHours);
+          const r = normRole(s.role);
+          roleHoursMap.set(r, (roleHoursMap.get(r) || 0) + s.totalHours);
         });
-
-        // Determine total configured percentage of roles that actually worked shifts today
-        let activeRolesConfiguredPct = 0;
-        roleHoursMap.forEach((hours, rLower) => {
-          if (hours > 0) {
-            const rRule = recipientMap.get(rLower);
-            activeRolesConfiguredPct += (rRule?.distributionPercent || 0);
+        let activePct = 0;
+        roleHoursMap.forEach((hours, r) => {
+          if (hours > 0) activePct += recipientMap.get(r)?.distributionPercent || 0;
+        });
+        recipientShifts.forEach((s) => {
+          const r = normRole(s.role);
+          const roleHours = roleHoursMap.get(r) || 0;
+          if (activePct > 0) {
+            const pct = (recipientMap.get(r)?.distributionPercent || 0) / activePct;
+            weights.push({ id: s.id, w: roleHours > 0 ? pct * (s.totalHours / roleHours) : 0 });
+          } else {
+            // No percentages configured for working roles: fall back to hours
+            weights.push({ id: s.id, w: s.totalHours });
           }
         });
-
-        recipientShifts.forEach((s) => {
-          const rLower = s.role.toLowerCase();
-          const rRule = recipientMap.get(rLower);
-          const rConfigPct = rRule?.distributionPercent || 0;
-
-          // Re-normalize active roles so 100% of the daily pool is distributed even if some roles are absent/took leave
-          const effectivePct = activeRolesConfiguredPct > 0
-            ? (rConfigPct / activeRolesConfiguredPct)
-            : (dayTotalRecipientHours > 0 ? (s.totalHours / dayTotalRecipientHours) : 0);
-
-          const rolePool = totalDayPool * effectivePct;
-          const rTotalHours = roleHoursMap.get(rLower) || 0;
-          const roleRate = rTotalHours > 0 ? rolePool / rTotalHours : 0;
-          const share = Math.round(s.totalHours * roleRate * 100) / 100;
-          shiftPoolShare.set(s.id, share);
-        });
+      } else {
+        // Method 1 (Equally): Shift Hours × Hourly Rate
+        recipientShifts.forEach((s) => weights.push({ id: s.id, w: s.totalHours }));
       }
 
-      // Universal Cent Reconciliation for ALL methods:
-      // Guarantee that the sum of shift pool shares EXACTLY equals totalDayPool (down to $0.00 difference)
-      let sumShiftShares = 0;
-      let firstShiftId = '';
-      recipientShifts.forEach((s) => {
-        sumShiftShares += shiftPoolShare.get(s.id) || 0;
-        if (!firstShiftId) firstShiftId = s.id;
-      });
-      const diffCents = Math.round((totalDayPool - sumShiftShares) * 100) / 100;
-      if (Math.abs(diffCents) > 0 && Math.abs(diffCents) <= 1.00 && recipientShifts.length > 0) {
-        let targetShiftId = recipientShifts[0].id;
-        let maxShare = -1;
-        recipientShifts.forEach((s) => {
-          const share = shiftPoolShare.get(s.id) || 0;
-          if (share > maxShare) {
-            maxShare = share;
-            targetShiftId = s.id;
-          }
+      shiftPoolShare = allocateCents(totalDayPool, weights);
+
+      const allocated = Array.from(shiftPoolShare.values()).reduce((a, b) => a + b, 0);
+      if (Math.round(allocated * 100) !== Math.round(totalDayPool * 100)) {
+        undistributedDays.push({
+          date,
+          amount: Math.round((totalDayPool - allocated) * 100) / 100,
         });
-        const cur = shiftPoolShare.get(targetShiftId) || 0;
-        shiftPoolShare.set(targetShiftId, Math.max(0, Math.round((cur + diffCents) * 100) / 100));
       }
     }
 
     // 5. Aggregate by employee for this day
     const dayEmpMap = new Map<string, EmployeeDailyDetail>();
 
-    for (const s of dayShifts) {
+    // Only tip recipients appear in payout tables (non-recipients still contribute to the pool)
+    for (const s of recipientShifts) {
       const cDetail = shiftContribDetails.get(s.id) || { contrib: 0, kept: 0 };
       const poolShare = shiftPoolShare.get(s.id) || 0;
       // Employee payout is their exact share from the tip pool
@@ -294,7 +300,7 @@ export function calculateTipCycle(
           keptTips: 0,
           poolShare,
           totalPayout,
-          dailyRate: perHourRate,
+          dailyRate: 0,
           percentageOfDailyPool: totalDayPool > 0 ? (poolShare / totalDayPool) * 100 : 0,
         });
       }
@@ -341,6 +347,9 @@ export function calculateTipCycle(
 
     let dayDistributed = 0;
     dayEmployeesList.forEach((e) => {
+      e.poolShare = Math.round(e.poolShare * 100) / 100;
+      e.totalPayout = Math.round(e.totalPayout * 100) / 100;
+      e.dailyRate = e.hours > 0 ? e.totalPayout / e.hours : 0;
       dayDistributed += e.poolShare;
       cycleTotalOverallPayout += e.totalPayout;
     });
@@ -380,6 +389,8 @@ export function calculateTipCycle(
   // Compute average per-hour tip for each employee
   const employeeSummaries = Array.from(employeeSummariesMap.values()).map((emp) => ({
     ...emp,
+    totalPayout: Math.round(emp.totalPayout * 100) / 100,
+    totalPoolReceived: Math.round(emp.totalPoolReceived * 100) / 100,
     averagePerHourTip: emp.totalHours > 0 ? emp.totalPayout / emp.totalHours : 0,
   }));
 
@@ -410,6 +421,7 @@ export function calculateTipCycle(
     employeeSummaries,
     excludedShiftsCount,
     excludedRoles: Array.from(excludedRolesSet),
+    undistributedDays,
     reconciliation: {
       totalInputPool: Math.round(cycleTotalPool * 100) / 100,
       totalDistributedPool: Math.round(cycleTotalDistributed * 100) / 100,

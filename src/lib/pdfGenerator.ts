@@ -57,7 +57,7 @@ export function generateTipCyclePDF(result: CycleCalculationResult): void {
     { label: 'TOTAL POOL DISTRIBUTED', value: `$${result.totalDistributed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: [108, 99, 255] },
     { label: 'RECIPIENT HOURS', value: `${result.totalRecipientHours.toFixed(2)} hrs`, color: [0, 180, 160] },
     { label: 'AVERAGE RATE / HR', value: `$${result.averagePerHourValue.toFixed(2)}/hr`, color: [124, 102, 220] },
-    { label: 'TOTAL PAYOUT', value: `$${result.totalOverallPayout.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: [0, 229, 163] },
+    { label: 'TOTAL TIPS TO BE PAID', value: `$${result.totalOverallPayout.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: [0, 229, 163] },
   ];
 
   kpis.forEach((kpi, idx) => {
@@ -109,7 +109,7 @@ export function generateTipCyclePDF(result: CycleCalculationResult): void {
 
   autoTable(doc, {
     startY: currentY,
-    head: [['Employee Name', 'Role', 'Hours', 'Net Sales', 'Total Payout', 'Rate ($/hr)']],
+    head: [['Employee Name', 'Role', 'Hours', 'Net Sales', 'Total Tips to be Paid', 'Rate ($/hr)']],
     body: employeeTableBody,
     theme: 'grid',
     pageBreak: 'auto',
@@ -186,7 +186,7 @@ export function generateTipCyclePDF(result: CycleCalculationResult): void {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(80, 85, 120);
-    const empMeta = `Role: ${emp.role}  |  Total Hours: ${emp.totalHours.toFixed(2)} hrs  |  Total Payout: $${emp.totalPayout.toFixed(2)}  |  Avg Rate: $${emp.averagePerHourTip.toFixed(2)}/hr`;
+    const empMeta = `Role: ${emp.role}  |  Total Hours: ${emp.totalHours.toFixed(2)} hrs  |  Total Tips to be Paid: $${emp.totalPayout.toFixed(2)}  |  Avg Rate: $${emp.averagePerHourTip.toFixed(2)}/hr`;
     doc.text(empMeta, pageWidth - margin - 10, currentY + 15, { align: 'right' });
 
     currentY += 26;
@@ -202,7 +202,7 @@ export function generateTipCyclePDF(result: CycleCalculationResult): void {
 
     autoTable(doc, {
       startY: currentY,
-      head: [['Date', 'Role', 'Hours', 'Net Sales', 'Payout', 'Rate ($/hr)']],
+      head: [['Date', 'Role', 'Hours', 'Net Sales', 'Total Tips to be Paid', 'Rate ($/hr)']],
       body: empRows,
       theme: 'grid',
       pageBreak: 'auto',

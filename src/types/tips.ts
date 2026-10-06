@@ -170,6 +170,7 @@ export interface CycleCalculationResult {
   employeeSummaries: EmployeeCycleSummary[];
   excludedShiftsCount: number;
   excludedRoles: string[];
+  undistributedDays?: { date: string; amount: number }[];
   reconciliation: {
     totalInputPool: number;
     totalDistributedPool: number;
