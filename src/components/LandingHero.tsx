@@ -787,7 +787,7 @@ export function LandingHero({ onStart, onViewDemo }: LandingHeroProps) {
               e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.5), 0 0 25px rgba(93, 84, 230, 0.4)';
             }}
           >
-            <span>Run a Backtest</span>
+            <span>Run Abacus</span>
             <ArrowRight size={20} color="#9ca3ff" />
           </button>
         </div>

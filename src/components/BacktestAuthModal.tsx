@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, X, AlertCircle, ArrowRight } from 'lucide-react';
+import { Lock, X, AlertCircle } from 'lucide-react';
 
 interface BacktestAuthModalProps {
   isOpen: boolean;
@@ -165,7 +165,7 @@ export function BacktestAuthModal({
             margin: '0 0 6px 0',
           }}
         >
-          Run a Backtest
+          Run Abacus
         </h2>
 
         {/* Description */}
@@ -177,7 +177,7 @@ export function BacktestAuthModal({
             lineHeight: 1.45,
           }}
         >
-          Enter the access password to run the backtest engine.
+          Enter the access password to run Abacus.
         </p>
 
         {/* Password Form */}
@@ -278,8 +278,7 @@ export function BacktestAuthModal({
               e.currentTarget.style.boxShadow = '0 8px 24px rgba(108, 99, 255, 0.4)';
             }}
           >
-            <span>Continue/Run</span>
-            <ArrowRight size={17} />
+            <span>Sign in</span>
           </button>
         </form>
       </div>
