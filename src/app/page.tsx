@@ -22,7 +22,7 @@ import {
   DEMO_TIME_CARD_FILENAME,
   DEMO_OTHER_TIP_FILENAME,
 } from '../lib/demoData';
-import { BacktestAuthModal } from '../components/BacktestAuthModal';
+
 
 export default function Home() {
   const [currentScreen, setCurrentScreen] = useState<NavScreen>('hero');
@@ -30,8 +30,7 @@ export default function Home() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isHardRefreshModalOpen, setIsHardRefreshModalOpen] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
-  const [isBacktestAuthenticated, setIsBacktestAuthenticated] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
 
   // Pool Settings state (Clean slate: user sets up restaurant, cycle dates, and rules)
   const [settings, setSettings] = useState<TipPoolSettings>({
@@ -198,8 +197,6 @@ export default function Home() {
   // Hard Refresh (Irreversible Permanent Purge of state, browser storage, and file inputs)
   const handleHardRefresh = () => {
     setIsDemoMode(false);
-    setIsBacktestAuthenticated(false);
-    setIsAuthModalOpen(false);
     setCurrentScreen('hero');
     setShifts([]);
     setTimeCardFileName(null);
@@ -295,35 +292,14 @@ export default function Home() {
     setIsHardRefreshModalOpen(true);
   };
 
-  // Handle Run a Backtest action (Protected by password authentication)
+  // Handle Run Abacus action — navigate directly to setup
   const handleRunBacktestClick = () => {
-    if (isBacktestAuthenticated) {
-      setCurrentScreen('setup');
-    } else {
-      setIsAuthModalOpen(true);
-    }
+    setCurrentScreen('setup');
   };
 
-  // Called when password ("Go Berserk" or "gobeserk") is successfully entered
-  const handleAuthSuccess = () => {
-    setIsBacktestAuthenticated(true);
-    setIsAuthModalOpen(false);
-    if (currentScreen === 'hero') {
-      setCurrentScreen('setup');
-      showToast('Authenticated: Backtest workspace loaded.');
-    } else {
-      setCurrentScreen('dashboard');
-      showToast('Authenticated: Tip calculation complete.');
-    }
-  };
-
-  // Gate calculation execution: Requires active session authentication or demo mode
+  // Execute tip calculation — navigate directly to dashboard
   const handleExecuteCalculation = () => {
-    if (isDemoMode || isBacktestAuthenticated) {
-      setCurrentScreen('dashboard');
-    } else {
-      setIsAuthModalOpen(true);
-    }
+    setCurrentScreen('dashboard');
   };
 
   // Handle other tip source loaded from file (.xlsx, .csv)
@@ -767,12 +743,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Password Authentication Modal for Run a Backtest */}
-      <BacktestAuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onSuccess={handleAuthSuccess}
-      />
+
     </div>
   );
 }
