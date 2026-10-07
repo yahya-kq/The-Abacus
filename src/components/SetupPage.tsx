@@ -17,6 +17,7 @@ import {
   ArrowRight,
   X,
   AlertCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   TipPoolSettings,
@@ -111,32 +112,12 @@ export function SetupPage({
     });
   }, [settings.startDate, settings.endDate, dailyTipInputs, shifts]);
 
-  // Aggregate totals for the external tip pool table columns and grand total
-  const dailyTipTotals = useMemo(() => {
-    let webDash = 0;
-    let online = 0;
-    let doorDash = 0;
-    let kiosk = 0;
-    let other = 0;
-    let grandTotal = 0;
-
-    for (const d of sortedDailyEntries) {
-      webDash += d.webDashTips || 0;
-      online += d.onlineTips || 0;
-      doorDash += d.doorDashTips || 0;
-      kiosk += d.kioskTips || 0;
-      other += d.otherTips || 0;
-      grandTotal += (d.webDashTips || 0) + (d.onlineTips || 0) + (d.doorDashTips || 0) + (d.kioskTips || 0) + (d.otherTips || 0);
-    }
-
-    return {
-      webDash: Math.round(webDash * 100) / 100,
-      online: Math.round(online * 100) / 100,
-      doorDash: Math.round(doorDash * 100) / 100,
-      kiosk: Math.round(kiosk * 100) / 100,
-      other: Math.round(other * 100) / 100,
-      grandTotal: Math.round(grandTotal * 100) / 100,
-    };
+  const totalSalesSummaryTips = useMemo(() => {
+    const sum = sortedDailyEntries.reduce(
+      (acc, d) => acc + (d.salesSummaryTips !== undefined && d.salesSummaryTips > 0 ? d.salesSummaryTips : (d.otherTips || 0)),
+      0
+    );
+    return Math.round(sum * 100) / 100;
   }, [sortedDailyEntries]);
 
   // Strict Validation: Cannot run tip distribution until contributor, recipient, and distribution rules are configured
@@ -646,45 +627,16 @@ export function SetupPage({
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <h2 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#ffffff' }}>
-                Time Cards & Other Tip Source
+                Time Cards & Sales Summary Tips
               </h2>
               <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)' }}>
-                Import primary shifts and external tip source files (.xlsx, .xls, .csv).
+                Import primary shifts and specify daily sales summary tips.
               </p>
-            </div>
-
-            {/* Manual Override Lock/Unlock Switch */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '6px 14px',
-                borderRadius: 'var(--radius-pill)',
-                background: isManualLocked ? 'rgba(139, 142, 222, 0.1)' : 'rgba(0, 229, 163, 0.14)',
-                border: isManualLocked ? '1px solid var(--border-subtle)' : '1px solid rgba(0, 229, 163, 0.4)',
-                cursor: 'pointer',
-                userSelect: 'none',
-              }}
-              onClick={() => setIsManualLocked(!isManualLocked)}
-            >
-              {isManualLocked ? <Lock size={15} color="#8e91be" /> : <Unlock size={15} color="#00e5a3" />}
-              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: isManualLocked ? '#c5c7e8' : '#00e5a3' }}>
-                {isManualLocked ? 'Inputs Locked' : 'Manual Override Active'}
-              </span>
             </div>
           </div>
 
-          {/* Two Upload Boxes: 1. Time Cards, 2. Other Tip Source */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: '16px',
-              marginBottom: '20px',
-            }}
-          >
-            {/* Box 1: Upload Time Cards */}
+          {/* Upload Time Cards */}
+          <div style={{ marginBottom: '20px' }}>
             <div
               onClick={() => timeCardInputRef.current?.click()}
               style={{
@@ -800,129 +752,6 @@ export function SetupPage({
                 </p>
               )}
             </div>
-
-            {/* Box 2: Upload Other Tip Source */}
-            <div
-              onClick={() => otherTipInputRef.current?.click()}
-              style={{
-                border: otherTipFileName ? '1.5px solid rgba(0, 229, 163, 0.5)' : '2px dashed var(--border-medium)',
-                borderRadius: 'var(--radius-md)',
-                padding: '24px 20px',
-                textAlign: 'center',
-                cursor: 'pointer',
-                background: otherTipFileName ? 'rgba(0, 229, 163, 0.08)' : 'rgba(21, 19, 54, 0.5)',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#00e5a3';
-                e.currentTarget.style.background = 'rgba(0, 229, 163, 0.12)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = otherTipFileName ? 'rgba(0, 229, 163, 0.5)' : 'var(--border-medium)';
-                e.currentTarget.style.background = otherTipFileName ? 'rgba(0, 229, 163, 0.08)' : 'rgba(21, 19, 54, 0.5)';
-              }}
-            >
-              <input
-                ref={otherTipInputRef}
-                type="file"
-                accept=".xlsx,.xls,.csv,.tsv,.txt,.png,.jpg,.jpeg,.webp,image/*"
-                style={{ display: 'none' }}
-                onChange={handleOtherTipUpload}
-              />
-              <div
-                style={{
-                  width: '46px',
-                  height: '46px',
-                  borderRadius: '12px',
-                  background: 'rgba(0, 229, 163, 0.18)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#00e5a3',
-                  marginBottom: '10px',
-                }}
-              >
-                <Upload size={22} />
-              </div>
-              <p style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.98rem' }}>
-                Upload Other Tip Source
-              </p>
-              {isOcrLoading ? (
-                <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                  <span style={{ color: '#00e5a3', fontSize: '0.85rem', fontWeight: 600 }}>
-                    ⚡ Scanning & transcribing screenshot via OCR...
-                  </span>
-                </div>
-              ) : otherTipFileName ? (
-                <div style={{ marginTop: '8px' }}>
-                  <div
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      maxWidth: '92%',
-                      padding: '4px 10px',
-                      borderRadius: 'var(--radius-pill)',
-                      background: 'rgba(0, 229, 163, 0.2)',
-                      color: '#00e5a3',
-                    }}
-                  >
-                    <span
-                      style={{
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        fontSize: '0.82rem',
-                        fontWeight: 500,
-                      }}
-                    >
-                      {otherTipFileName}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (otherTipInputRef.current) otherTipInputRef.current.value = '';
-                        onRemoveOtherTips?.();
-                      }}
-                      title="Remove other tips file"
-                      style={{
-                        background: 'rgba(255, 95, 109, 0.25)',
-                        border: 'none',
-                        borderRadius: '50%',
-                        width: '20px',
-                        height: '20px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: '#ff5f6d',
-                        padding: 0,
-                        flexShrink: 0,
-                        transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 95, 109, 0.45)';
-                        e.currentTarget.style.color = '#ffffff';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 95, 109, 0.25)';
-                        e.currentTarget.style.color = '#ff5f6d';
-                      }}
-                    >
-                      <X size={12} strokeWidth={2.5} />
-                    </button>
-                  </div>
-                  <p style={{ color: '#00e5a3', fontSize: '0.8rem', marginTop: '6px', fontWeight: 500 }}>
-                    ✓ {sortedDailyEntries.length} daily records updated
-                  </p>
-                </div>
-              ) : (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '6px' }}>
-                  Import external channel tips (Excel, CSV, Text, or Screenshot)
-                </p>
-              )}
-            </div>
           </div>
 
           {uploadError && (
@@ -931,102 +760,57 @@ export function SetupPage({
             </div>
           )}
 
-          {/* Daily Tip Source Table (Interactive when unlocked) */}
+          {/* Sales Summary Tips Table */}
           <div style={{ marginTop: '16px' }}>
-            <h3 style={{ fontSize: '0.92rem', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
-              External Daily Tip Pool Entries
-            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+              <h3 style={{ fontSize: '0.94rem', fontWeight: 600, color: '#ffffff', margin: 0 }}>
+                Sales Summary Tips
+              </h3>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Tip pool distribution will be calculated on the basis of these tips
+              </span>
+            </div>
             <div className="data-table-container" style={{ maxHeight: '380px', overflowY: 'auto', position: 'relative' }}>
               <table className="data-table" style={{ borderCollapse: 'separate', borderSpacing: 0, width: '100%' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 12 }}>
                   <tr>
-                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12 }}>Date</th>
-                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12 }}>Day</th>
-                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12 }}>WebDash ($)</th>
-                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12 }}>Online ($)</th>
-                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12 }}>DoorDash ($)</th>
-                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12 }}>Kiosk ($)</th>
-                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12 }}>Other ($)</th>
-                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12, textAlign: 'right' }}>Tips</th>
+                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12, width: '35%' }}>Date</th>
+                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12, width: '30%' }}>Day</th>
+                    <th style={{ position: 'sticky', top: 0, background: '#151336', zIndex: 12, width: '35%', textAlign: 'right' }}>Sales Summary Tips ($)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedDailyEntries.map((d) => (
-                    <tr key={d.date}>
-                      <td style={{ fontWeight: 600 }}>{formatDisplayDate(d.date)}</td>
-                      <td style={{ color: 'var(--text-muted)' }}>{d.dayOfWeek}</td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          disabled={isManualLocked}
-                          className="input-clean"
-                          style={{ padding: '4px 8px', width: '85px', fontSize: '0.85rem' }}
-                          value={d.webDashTips || 0}
-                          onChange={(e) => onDailyInputChange(d.date, 'webDashTips', parseFloat(e.target.value) || 0)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          disabled={isManualLocked}
-                          className="input-clean"
-                          style={{ padding: '4px 8px', width: '85px', fontSize: '0.85rem' }}
-                          value={d.onlineTips || 0}
-                          onChange={(e) => onDailyInputChange(d.date, 'onlineTips', parseFloat(e.target.value) || 0)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          disabled={isManualLocked}
-                          className="input-clean"
-                          style={{ padding: '4px 8px', width: '85px', fontSize: '0.85rem' }}
-                          value={d.doorDashTips || 0}
-                          onChange={(e) => onDailyInputChange(d.date, 'doorDashTips', parseFloat(e.target.value) || 0)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          disabled={isManualLocked}
-                          className="input-clean"
-                          style={{ padding: '4px 8px', width: '85px', fontSize: '0.85rem' }}
-                          value={d.kioskTips || 0}
-                          onChange={(e) => onDailyInputChange(d.date, 'kioskTips', parseFloat(e.target.value) || 0)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          disabled={isManualLocked}
-                          className="input-clean"
-                          style={{ padding: '4px 8px', width: '85px', fontSize: '0.85rem' }}
-                          value={d.otherTips || 0}
-                          onChange={(e) => onDailyInputChange(d.date, 'otherTips', parseFloat(e.target.value) || 0)}
-                        />
-                      </td>
-                      <td style={{ textAlign: 'right', fontWeight: 700, color: '#00e5a3' }}>
-                        ${((d.webDashTips || 0) + (d.onlineTips || 0) + (d.doorDashTips || 0) + (d.kioskTips || 0) + (d.otherTips || 0)).toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
+                  {sortedDailyEntries.map((d) => {
+                    const tipVal = d.salesSummaryTips !== undefined && d.salesSummaryTips > 0 ? d.salesSummaryTips : (d.otherTips || 0);
+                    return (
+                      <tr key={d.date}>
+                        <td style={{ fontWeight: 600 }}>{formatDisplayDate(d.date)}</td>
+                        <td style={{ color: 'var(--text-muted)' }}>{d.dayOfWeek}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="input-clean"
+                            style={{ padding: '6px 12px', width: '140px', fontSize: '0.9rem', textAlign: 'right', fontWeight: 600, color: '#00e5a3' }}
+                            value={tipVal === 0 ? '' : tipVal}
+                            placeholder="0.00"
+                            onChange={(e) => {
+                              const parsed = parseFloat(e.target.value) || 0;
+                              onDailyInputChange(d.date, 'salesSummaryTips', parsed);
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot style={{ position: 'sticky', bottom: 0, zIndex: 12 }}>
                   <tr style={{ background: '#1c194a', borderTop: '2px solid rgba(108, 99, 255, 0.45)' }}>
                     <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', fontWeight: 700, color: '#ffffff', zIndex: 12 }}>Total</td>
                     <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', color: 'var(--text-muted)', zIndex: 12 }}>—</td>
-                    <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', fontWeight: 700, color: '#c5c7e8', zIndex: 12 }}>${dailyTipTotals.webDash.toFixed(2)}</td>
-                    <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', fontWeight: 700, color: '#c5c7e8', zIndex: 12 }}>${dailyTipTotals.online.toFixed(2)}</td>
-                    <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', fontWeight: 700, color: '#c5c7e8', zIndex: 12 }}>${dailyTipTotals.doorDash.toFixed(2)}</td>
-                    <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', fontWeight: 700, color: '#c5c7e8', zIndex: 12 }}>${dailyTipTotals.kiosk.toFixed(2)}</td>
-                    <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', fontWeight: 700, color: '#c5c7e8', zIndex: 12 }}>${dailyTipTotals.other.toFixed(2)}</td>
-                    <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', textAlign: 'right', fontWeight: 800, color: '#00e5a3', fontSize: '0.98rem', zIndex: 12 }}>
-                      ${dailyTipTotals.grandTotal.toFixed(2)}
+                    <td style={{ position: 'sticky', bottom: 0, background: '#1c194a', textAlign: 'right', fontWeight: 800, color: '#00e5a3', fontSize: '1rem', zIndex: 12 }}>
+                      ${totalSalesSummaryTips.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                   </tr>
                 </tfoot>
@@ -1698,9 +1482,9 @@ export function SetupPage({
               width: '100%',
               padding: '28px',
               borderRadius: '16px',
-              border: '1.5px solid rgba(255, 95, 109, 0.45)',
+              border: '1.5px solid rgba(245, 158, 11, 0.45)',
               background: '#151233',
-              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(255, 95, 109, 0.25)',
+              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(245, 158, 11, 0.2)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '18px' }}>
@@ -1709,23 +1493,23 @@ export function SetupPage({
                   width: '46px',
                   height: '46px',
                   borderRadius: '12px',
-                  background: 'rgba(255, 95, 109, 0.16)',
-                  border: '1px solid rgba(255, 95, 109, 0.35)',
+                  background: 'rgba(245, 158, 11, 0.16)',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#ff5f6d',
+                  color: '#f59e0b',
                   flexShrink: 0,
                 }}
               >
-                <AlertCircle size={24} />
+                <AlertTriangle size={24} />
               </div>
               <div>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ffffff', margin: 0 }}>
-                  Tip Distribution Incomplete
+                  Tip Setup Incomplete
                 </h3>
                 <p style={{ fontSize: '0.88rem', color: '#c5c7e8', marginTop: '6px', lineHeight: 1.5 }}>
-                  The tip distribution calculation cannot run until the required setup is completed:
+                  The following setup items are currently missing:
                 </p>
               </div>
             </div>
@@ -1737,9 +1521,9 @@ export function SetupPage({
                   style={{
                     padding: '10px 14px',
                     borderRadius: '8px',
-                    background: 'rgba(255, 95, 109, 0.1)',
-                    border: '1px solid rgba(255, 95, 109, 0.25)',
-                    color: '#ff9da7',
+                    background: 'rgba(245, 158, 11, 0.1)',
+                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                    color: '#fde68a',
                     fontSize: '0.85rem',
                     fontWeight: 500,
                     display: 'flex',
@@ -1747,20 +1531,31 @@ export function SetupPage({
                     gap: '10px',
                   }}
                 >
-                  <span style={{ color: '#ff5f6d', fontWeight: 700 }}>•</span>
+                  <span style={{ color: '#f59e0b', fontWeight: 700 }}>•</span>
                   <span>{err}</span>
                 </div>
               ))}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setShowValidationModal(false)}
+                style={{ padding: '9px 20px' }}
+              >
+                Got It
+              </button>
               <button
                 type="button"
                 className="btn-primary"
-                onClick={() => setShowValidationModal(false)}
-                style={{ padding: '9px 24px' }}
+                onClick={() => {
+                  setShowValidationModal(false);
+                  onRunCalculation();
+                }}
+                style={{ padding: '9px 24px', background: 'linear-gradient(135deg, #6c63ff 0%, #4f46e5 100%)' }}
               >
-                Got It
+                Run
               </button>
             </div>
           </div>

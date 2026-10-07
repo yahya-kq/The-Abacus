@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Download,
   Calendar,
@@ -36,6 +36,8 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeCycleSummary | null>(null);
   const [expandedDate, setExpandedDate] = useState<string | null>(result.dailyCalculations[0]?.date || null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
+  const downloadMenuRef = useRef<HTMLDivElement>(null);
 
   const allRoles = Array.from(new Set(result.employeeSummaries.map((e) => e.role))).filter(Boolean);
 
@@ -64,10 +66,25 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
     setCurrentPage(1);
   };
 
-  const handleExportPDF = () => {
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(event.target as Node)) {
+        setIsDownloadMenuOpen(false);
+      }
+    };
+    if (isDownloadMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDownloadMenuOpen]);
+
+  const handleExportPDF = (mode: 'full' | 'cycle') => {
     setIsExporting(true);
+    setIsDownloadMenuOpen(false);
     try {
-      generateTipCyclePDF(result);
+      generateTipCyclePDF(result, mode);
     } catch (e) {
       console.error('Error generating PDF:', e);
     } finally {
@@ -120,17 +137,110 @@ export function CalculationDashboard({ result, onHardRefresh }: CalculationDashb
             <span>Hard Refresh</span>
           </button>
 
-          {/* Export PDF Button */}
-          <button
-            onClick={handleExportPDF}
-            type="button"
-            disabled={isExporting}
-            className="btn-primary"
-            style={{ padding: '10px 22px' }}
-          >
-            <Download size={17} />
-            <span>{isExporting ? 'Generating PDF...' : 'Export Client PDF'}</span>
-          </button>
+          {/* Download Report Dropdown */}
+          <div ref={downloadMenuRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)}
+              type="button"
+              disabled={isExporting}
+              className="btn-primary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 20px',
+                cursor: 'pointer',
+              }}
+            >
+              <Download size={17} />
+              <span>{isExporting ? 'Generating PDF...' : 'Download Report'}</span>
+              <ChevronDown
+                size={16}
+                style={{
+                  transform: isDownloadMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s ease',
+                }}
+              />
+            </button>
+
+            {isDownloadMenuOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  right: 0,
+                  width: '270px',
+                  background: '#151233',
+                  border: '1.5px solid rgba(108, 99, 255, 0.4)',
+                  borderRadius: '12px',
+                  boxShadow: '0 16px 40px rgba(0, 0, 0, 0.65), 0 0 24px rgba(108, 99, 255, 0.25)',
+                  padding: '8px',
+                  zIndex: 50,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => handleExportPDF('full')}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(108, 99, 255, 0.2)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <span style={{ fontSize: '0.92rem', fontWeight: 600, color: '#ffffff' }}>
+                    Download Full Report
+                  </span>
+                  <span style={{ fontSize: '0.78rem', color: '#c5c7e8', marginTop: '2px' }}>
+                    Cycle summary & employee date breakdown
+                  </span>
+                </button>
+
+                <div style={{ height: '1px', background: 'rgba(139, 142, 222, 0.15)', margin: '2px 0' }} />
+
+                <button
+                  type="button"
+                  onClick={() => handleExportPDF('cycle')}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0, 229, 163, 0.15)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <span style={{ fontSize: '0.92rem', fontWeight: 600, color: '#00e5a3' }}>
+                    Cycle Report
+                  </span>
+                  <span style={{ fontSize: '0.78rem', color: '#c5c7e8', marginTop: '2px' }}>
+                    Cycle summary only (no employee breakdown)
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

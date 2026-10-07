@@ -175,17 +175,20 @@ export function calculateTipCycle(
     const onlineContrib = (dayInput.onlineTips || 0) * (settings.sources.online?.enabled ? settings.sources.online.percent / 100 : 0);
     const thirdPartyContrib = (dayInput.doorDashTips || 0) * (settings.sources.thirdParty?.enabled ? settings.sources.thirdParty.percent / 100 : 0);
     const otherContrib = (dayInput.otherTips || 0);
-
-    const externalPool = kioskContrib + onlineContrib + thirdPartyContrib + otherContrib;
-
-    // Tips from time cards:
-    // If shift records exist for today, use their exact shift contributions.
-    // If no shifts were recorded for today, fall back to dayInput.webDashTips.
-    // NEVER add both (avoids doubling tips).
     const dayTimecardTips = dayShifts.length > 0 ? dayShiftContributions : (dayInput.webDashTips || 0);
     const webDashContrib = Math.round(dayTimecardTips * 100) / 100;
 
-    const totalDayPool = Math.round((dayTimecardTips + externalPool) * 100) / 100;
+    const salesSummaryTips = (dayInput.salesSummaryTips !== undefined && dayInput.salesSummaryTips > 0)
+      ? dayInput.salesSummaryTips
+      : 0;
+
+    let totalDayPool = 0;
+    if (salesSummaryTips > 0) {
+      totalDayPool = Math.round(salesSummaryTips * 100) / 100;
+    } else {
+      const externalPool = kioskContrib + onlineContrib + thirdPartyContrib + otherContrib;
+      totalDayPool = Math.round((dayTimecardTips + externalPool) * 100) / 100;
+    }
 
     cycleTotalPool += totalDayPool;
 

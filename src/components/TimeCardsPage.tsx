@@ -73,6 +73,7 @@ export function TimeCardsPage({
   const dynamicTipPlatforms = useMemo(() => {
     const platforms: { id: string; name: string; amount: number; color: string }[] = [];
 
+    let salesSummarySum = 0;
     let webDashSum = 0;
     let onlineSum = 0;
     let doorDashSum = 0;
@@ -84,6 +85,9 @@ export function TimeCardsPage({
 
     if (hasDailyInputs) {
       for (const d of Object.values(dailyTipInputs)) {
+        salesSummarySum += (d.salesSummaryTips !== undefined && d.salesSummaryTips > 0)
+          ? d.salesSummaryTips
+          : 0;
         webDashSum += d.webDashTips || 0;
         onlineSum += d.onlineTips || 0;
         doorDashSum += d.doorDashTips || 0;
@@ -100,6 +104,9 @@ export function TimeCardsPage({
       webDashSum = shifts.reduce((acc, s) => acc + s.collectedTips, 0);
     }
 
+    if (salesSummarySum > 0) {
+      platforms.push({ id: 'salessummary', name: 'Sales Summary Tips', amount: Math.round(salesSummarySum * 100) / 100, color: '#00e5a3' });
+    }
     if (webDashSum > 0) {
       platforms.push({ id: 'webdash', name: 'Web/Dash Tips', amount: Math.round(webDashSum * 100) / 100, color: '#9ca3ff' });
     }

@@ -169,17 +169,27 @@ export default function Home() {
         doorDashTips: 0,
         kioskTips: 0,
         otherTips: 0,
+        salesSummaryTips: 0,
         totalTips: 0,
       };
 
       const updated = { ...current, [field]: value };
-      updated.totalTips = Math.round((
-        (updated.webDashTips || 0) +
-        (updated.onlineTips || 0) +
-        (updated.doorDashTips || 0) +
-        (updated.kioskTips || 0) +
-        (updated.otherTips || 0)
-      ) * 100) / 100;
+      if (field === 'salesSummaryTips') {
+        updated.salesSummaryTips = value;
+      }
+      const salesTips = updated.salesSummaryTips !== undefined && updated.salesSummaryTips > 0
+        ? updated.salesSummaryTips
+        : 0;
+
+      updated.totalTips = salesTips > 0
+        ? Math.round(salesTips * 100) / 100
+        : Math.round((
+            (updated.webDashTips || 0) +
+            (updated.onlineTips || 0) +
+            (updated.doorDashTips || 0) +
+            (updated.kioskTips || 0) +
+            (updated.otherTips || 0)
+          ) * 100) / 100;
 
       return { ...prev, [date]: updated };
     });

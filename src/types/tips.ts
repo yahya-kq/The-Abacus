@@ -91,6 +91,7 @@ export interface DailyTipInput {
   doorDashTips: number;
   kioskTips: number;
   otherTips: number;
+  salesSummaryTips?: number;
   customFields?: Record<string, number>;
   totalTips: number;
 }
